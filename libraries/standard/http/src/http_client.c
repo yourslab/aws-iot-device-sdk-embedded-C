@@ -323,8 +323,8 @@ static HTTPStatus_t _sendHttpHeaders( const HTTPTransportInterface_t * pTranspor
 
     if( transportStatus < 0 )
     {
-        IotLogErrorWithArgs( "Failed to send HTTP headers: Transport send()"
-                             " returned error: Transport Status = %d",
+        IotLogErrorWithArgs( "Error in sending the HTTP headers over the transport "
+                             "interface: Transport status %d.",
                              transportStatus );
         returnStatus = HTTP_NETWORK_ERROR;
     }
@@ -467,10 +467,10 @@ static HTTPStatus_t _getFinalResponseStatus( HTTPParsingState_t parsingState,
     {
         if( totalReceived == responseBufferLen )
         {
-            IotLogErrorWithArgs( "Response is too large for the response buffer"
-                                 ": Response buffer size in bytes = %d",
-                                 responseBufferLen );
-            returnStatus = HTTP_INSUFFICIENT_MEMORY;
+            IotLogErrorWithArgs( "Error in sending the HTTP body over the "
+                                 "transport interface. Transport status %d.",
+                                 transportStatus );
+            returnStatus = HTTP_NETWORK_ERROR;
         }
         else
         {
