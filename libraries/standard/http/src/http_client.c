@@ -98,6 +98,8 @@ static HTTPStatus_t _addHeader( HTTPRequestHeaders_t * pRequestHeaders,
                                 const char * pValue,
                                 size_t valueLen );
 
+/*-----------------------------------------------------------*/
+
 static HTTPStatus_t _addHeader( HTTPRequestHeaders_t * pRequestHeaders,
                                 const char * pField,
                                 size_t fieldLen,
@@ -161,11 +163,15 @@ static HTTPStatus_t _addHeader( HTTPRequestHeaders_t * pRequestHeaders,
     return returnStatus;
 }
 
+/*-----------------------------------------------------------*/
+
 HTTPStatus_t HTTPClient_InitializeRequestHeaders( HTTPRequestHeaders_t * pRequestHeaders,
                                                   const HTTPRequestInfo_t * pRequestInfo )
 {
     return HTTP_NOT_SUPPORTED;
 }
+
+/*-----------------------------------------------------------*/
 
 HTTPStatus_t HTTPClient_AddHeader( HTTPRequestHeaders_t * pRequestHeaders,
                                    const char * pField,
