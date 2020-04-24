@@ -208,7 +208,7 @@ HTTPStatus_t HTTPClient_AddHeader( HTTPRequestHeaders_t * pRequestHeaders,
                              ( UINT32_MAX >> 2 ) );
         returnStatus = HTTP_INVALID_PARAMETER;
     }
-    else if( fieldLen == 0UL )
+    else if( fieldLen == 0U )
     {
         IotLogError( "Parameter check failed: fieldLen must be greater than 0." );
         returnStatus = HTTP_INVALID_PARAMETER;
@@ -225,7 +225,7 @@ HTTPStatus_t HTTPClient_AddHeader( HTTPRequestHeaders_t * pRequestHeaders,
                              ( UINT32_MAX >> 2 ) );
         returnStatus = HTTP_INVALID_PARAMETER;
     }
-    else if( valueLen == 0UL )
+    else if( valueLen == 0U )
     {
         IotLogError( "Parameter check failed: valueLen must be greater than 0." );
         returnStatus = HTTP_INVALID_PARAMETER;
