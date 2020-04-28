@@ -590,7 +590,7 @@ static HTTPStatus_t _getFinalResponseStatus( HTTPParsingState_t parsingState,
         {
             IotLogErrorWithArgs( "Error in sending the HTTP body over the "
                                  "transport interface. Transport status %d.",
-                                 transportStatus );
+                                 responseBufferLen );
             returnStatus = HTTP_NETWORK_ERROR;
         }
         else
