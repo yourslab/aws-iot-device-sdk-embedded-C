@@ -1,5 +1,4 @@
 #include <assert.h>
-/* Standard Includes. */
 #include <string.h>
 #include <stdlib.h>
 #include <stdio.h>
