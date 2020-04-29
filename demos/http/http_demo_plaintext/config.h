@@ -25,4 +25,7 @@
 #define HTTP_DEMO_SERVER_ADDRESS    "httpbin.org"
 #define HTTP_DEMO_SERVER_PORT       ( 80 )
 
+#include <stdio.h>
+#include <stdlib.h>
+
 #endif /* ifndef CONFIG_H */
