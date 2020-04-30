@@ -30,6 +30,8 @@
 #include <sys/socket.h>
 #include <sys/types.h>
 
+#include "config.h"
+
 #include "http_client.h"
 
 /**
@@ -175,9 +177,9 @@ static int connectToServer( const char * pServer,
  *
  * @return Number of bytes sent; negative value on error.
  */
-static int32_t _transportSend( int tcpSocket,
-                               const void * pMessage,
-                               size_t bytesToSend )
+static int32_t transportSend( int tcpSocket,
+                              const void * pMessage,
+                              size_t bytesToSend )
 {
     return ( int32_t ) send( tcpSocket, pMessage, bytesToSend, 0 );
 }
@@ -193,34 +195,38 @@ static int32_t _transportSend( int tcpSocket,
  *
  * @return Number of bytes received; negative value on error.
  */
-static int32_t _transportRecv( int tcpSocket,
-                               void * pBuffer,
-                               size_t bytesToRecv )
+static int32_t transportRecv( int tcpSocket,
+                              void * pBuffer,
+                              size_t bytesToRecv )
 {
     return ( int32_t ) recv( tcpSocket, pBuffer, bytesToRecv, 0 );
 }
 
+/*-----------------------------------------------------------*/
+
 /**
  * @brief Send an HTTP request based on a specified method and path.
  *
+ * @param[in] tcpSocket TCP socket.
  * @param[in] pMethod The HTTP request method.
  * @param[in] pPath The Request-URI to the objects of interest.
  *
  * @return #HTTP_SUCCESS if successful.
  */
-static HTTPStatus_t _sendHttpRequest( const char * pMethod,
+static HTTPStatus_t _sendHttpRequest( int tcpSocket,
+                                      const char * pMethod,
                                       const char * pPath )
 {
     HTTPStatus_t returnStatus = HTTP_SUCCESS;
     HTTPRequestHeaders_t requestHeaders = { 0 };
     HTTPRequestInfo_t requestInfo = { 0 };
-    HTTPTransportInterface_t transportInterface = { 0 };
+    HTTPTransportInterface_t transport = { 0 };
     HTTPResponse_t response = { 0 };
 
-    IotLogDebugWithArgs( "Sending HTTP %s request to %s%s...\r\n",
-                         pMethod, SERVER, pPath );
+    IotLog( "Sending HTTP %s request to %s%s\r\n",
+            pMethod, SERVER, pPath );
 
-    /* Initialize the request context. */
+    /* Initialize the request object. */
     requestInfo.method = pMethod;
     requestInfo.methodLen = sizeof( pMethod ) - 1;
     requestInfo.pPath = pPath;
@@ -234,24 +240,38 @@ static HTTPStatus_t _sendHttpRequest( const char * pMethod,
 
     if( returnStatus == HTTP_SUCCESS )
     {
-        /* Initialize the response context. */
+        /* Define the transport interface. */
+        transport.recv = transportRecv;
+        transport.send = transportSend;
+        transport.pContext = tcpSocket;
+
+        /* Initialize the response object. */
         response.pBuffer = userBuffer;
         response.bufferLen = USER_BUFFER_LENGTH;
 
-        transportInterface.recv = _transportRecv;
-        transportInterface.send = _transportSend;
-        transportInterface.pContext = NULL;
-
         /* Send the request and receive the response. */
-        returnStatus = HTTPClient_Send( &transportInterface,
+        returnStatus = HTTPClient_Send( &transport,
                                         &requestHeaders,
                                         requestBodyBuffer,
                                         REQUEST_BODY_TEXT_LENGTH,
                                         &response );
     }
 
+    if( returnStatus == HTTP_SUCCESS )
+    {
+        /* Print the response. */
+        IotLog( "Response Headers\n%.*s\n",
+                response.headersLen,
+                response.pHeaders );
+        IotLog( "Response Body\n%.*s",
+                response.bodyLen,
+                response.pBody );
+    }
+
     return returnStatus;
 }
+
+/*-----------------------------------------------------------*/
 
 /**
  * @brief Entry point of demo.
@@ -260,7 +280,7 @@ int main()
 {
     HTTPStatus_t returnStatus = HTTP_SUCCESS;
 
-    /* Establish TCP connection and MQTT session. */
+    /* Establish TCP connection. */
     int tcpSocket = connectToServer( SERVER, PORT );
 
     if( tcpSocket == -1 )
@@ -273,25 +293,41 @@ int main()
     /* The client is now connected to the server. This example will send a
      * GET, HEAD, PUT, and POST request. */
 
-    if( returnStatus == HTTP_SUCCESS )
-    {
-        returnStatus = _sendHttpRequest( HTTP_METHOD_GET, GET_PATH );
-    }
+    #ifdef GET_PATH
+        if( returnStatus == HTTP_SUCCESS )
+        {
+            returnStatus = _sendHttpRequest( tcpSocket,
+                                             HTTP_METHOD_GET,
+                                             GET_PATH );
+        }
+    #endif
 
-    if( returnStatus == HTTP_SUCCESS )
-    {
-        returnStatus = _sendHttpRequest( HTTP_METHOD_HEAD, HEAD_PATH );
-    }
+    #ifdef HEAD_PATH
+        if( returnStatus == HTTP_SUCCESS )
+        {
+            returnStatus = _sendHttpRequest( tcpSocket,
+                                             HTTP_METHOD_HEAD,
+                                             HEAD_PATH );
+        }
+    #endif
 
-    if( returnStatus == HTTP_SUCCESS )
-    {
-        returnStatus = _sendHttpRequest( HTTP_METHOD_PUT, PUT_PATH );
-    }
+    #ifdef PUT_PATH
+        if( returnStatus == HTTP_SUCCESS )
+        {
+            returnStatus = _sendHttpRequest( tcpSocket,
+                                             HTTP_METHOD_PUT,
+                                             PUT_PATH );
+        }
+    #endif
 
-    if( returnStatus == HTTP_SUCCESS )
-    {
-        returnStatus = _sendHttpRequest( HTTP_METHOD_POST, POST_PATH );
-    }
+    #ifdef POST_PATH
+        if( returnStatus == HTTP_SUCCESS )
+        {
+            returnStatus = _sendHttpRequest( tcpSocket,
+                                             HTTP_METHOD_POST,
+                                             POST_PATH );
+        }
+    #endif
 
     /**************************** Disconnect. *****************************/
 

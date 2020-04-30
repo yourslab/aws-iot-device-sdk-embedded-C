@@ -22,10 +22,22 @@
 #ifndef CONFIG_H
 #define CONFIG_H
 
-#define HTTP_DEMO_SERVER_ADDRESS    "httpbin.org"
-#define HTTP_DEMO_SERVER_PORT       ( 80 )
+/* Include file for POSIX reference implementation. */
+#include "iot_logging_levels.h"
+#include "iot_logging.h"
 
-#include <stdio.h>
-#include <stdlib.h>
+#define LOG_NAME         ( "HTTP_DEMO" )
+#define IOT_LOG_LEVEL    ( IOT_LOG_DEBUG )
+
+/* Define the IotLog logging interface to enabling logging.
+ * This demo maps the macro to the reference POSIX implementation for logging.
+ * Note: @ref LOG_NAME produces metadata for each log message. */
+#define IotLog( pFormat, ... )              \
+    IotLog_Generic( IOT_LOG_INFO,           \
+                    "[%s:%d] [%s] "pFormat, \
+                    __FILE__,               \
+                    __LINE__,               \
+                    LOG_NAME,               \
+                    __VA_ARGS__ )
 
 #endif /* ifndef CONFIG_H */
