@@ -8,7 +8,7 @@
 #ifdef USE_AWS_IOT_CSDK_LOGGING
 
 /* Include file for POSIX reference implementation. */
-    #include "iot_logging.h"
+    #include "logging.h"
 
 /* Define the IotLog logging interface to enable logging.
  * This demo maps the macro to the reference POSIX implementation for logging.
