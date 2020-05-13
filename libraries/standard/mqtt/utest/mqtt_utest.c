@@ -7,6 +7,10 @@
 /* Include paths for public enums, structures, and macros. */
 #include "mqtt.h"
 
+#define MQTT_TEST_BUFFER_LENGTH    ( 1024 )
+
+static uint8_t buffer[ MQTT_TEST_BUFFER_LENGTH ] = { 0 };
+
 /* ============================   UNITY FIXTURES ============================ */
 void setUp( void )
 {
@@ -28,7 +32,7 @@ int suiteTearDown( int numFailures )
 }
 
 /* ============================   Testing MQTT_Init ========================= */
-void test_Mqtt_init_complete( void )
+void test_Mqtt_Init_complete()
 {
     MQTTContext_t context;
     MQTTTransportInterface_t transport;
@@ -41,4 +45,19 @@ void test_Mqtt_init_complete( void )
     TEST_ASSERT_EQUAL_MEMORY( &context.transportInterface, &transport, sizeof( transport ) );
     TEST_ASSERT_EQUAL_MEMORY( &context.callbacks, &callbacks, sizeof( callbacks ) );
     TEST_ASSERT_EQUAL_MEMORY( &context.networkBuffer, &networkBuffer, sizeof( networkBuffer ) );
+}
+
+/* =====================  Testing MQTT_SerializeConnect ===================== */
+void test_Mqtt_SerializeConnect_invalid_params()
+{
+    MQTTStatus_t mqttStatus = MQTTSuccess;
+    size_t remainingLength, packetSize;
+    MQTTFixedBuffer_t networkBuffer;
+    MQTTConnectInfo_t connectInfo;
+
+    mqttStatus = MQTT_SerializeConnect( NULL, NULL, remainingLength, &networkBuffer );
+    TEST_ASSERT_EQUAL( mqttStatus, MQTTBadParameter );
+
+    mqttStatus = MQTT_SerializeConnect( &connectInfo, NULL, remainingLength, &networkBuffer );
+    TEST_ASSERT_EQUAL( mqttStatus, MQTTBadParameter );
 }
