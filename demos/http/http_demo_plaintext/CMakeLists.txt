@@ -12,7 +12,6 @@ target_link_libraries(
     ${DEMO_NAME}
     PRIVATE
         http
-    PUBLIC
         logging
 )
 
