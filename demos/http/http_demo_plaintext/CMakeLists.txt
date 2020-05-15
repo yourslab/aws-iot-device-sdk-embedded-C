@@ -11,7 +11,15 @@ target_sources(
 target_link_libraries(
     ${DEMO_NAME}
     PRIVATE
-        http   
+        http
+    PUBLIC
+        logging
+)
+
+target_include_directories(
+    logging
+    PRIVATE
+        ${CMAKE_CURRENT_LIST_DIR}
 )
 
 target_include_directories(
