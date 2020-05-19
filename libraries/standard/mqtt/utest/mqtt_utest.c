@@ -21,7 +21,9 @@
 /**
  * @brief Length of the MQTT network buffer.
  */
-#define MQTT_TEST_BUFFER_LENGTH      ( 1024 )
+#define MQTT_TEST_BUFFER_LENGTH      ( 2056 )
+
+static uint32_t globalEntryTime = 0;
 
 static uint8_t mqttBuffer[ MQTT_TEST_BUFFER_LENGTH ] = { 0 };
 
@@ -30,6 +32,7 @@ static uint8_t mqttBuffer[ MQTT_TEST_BUFFER_LENGTH ] = { 0 };
 /* Called before each test method. */
 void setUp( void )
 {
+    globalEntryTime = 0;
 }
 
 /* Called after each test method. */
@@ -124,6 +127,16 @@ static void eventCallback( MQTTContext_t * pContext,
 }
 
 /**
+ * @brief A mocked timer query function that increments on every call. This
+ * guarantees that only a single iteration runs in the ProcessLoop for ease
+ * of testing.
+ */
+static uint32_t getTime( void )
+{
+    return globalEntryTime++;
+}
+
+/**
  * @brief Mocked successful transport send.
  */
 static int32_t transportSendSuccess( MQTTNetworkContext_t pContext,
@@ -145,23 +158,6 @@ static int32_t transportRecvSuccess( MQTTNetworkContext_t pContext,
     ( void ) pContext;
     ( void ) pBuffer;
     return bytesToRead;
-}
-
-/**
- * @brief A timer query function for POSIX platforms.
- */
-static uint32_t getTime( void )
-{
-    uint64_t highResMs;
-    struct timespec timeSpec;
-
-    /* Get the MONOTONIC time. */
-    clock_gettime( CLOCK_MONOTONIC, &timeSpec );
-
-    /* Calculate the milliseconds from timespec. */
-    highResMs = ( uint32_t ) ( timeSpec.tv_sec * 1000 )
-                + ( uint32_t ) ( timeSpec.tv_nsec / 1000 );
-    return highResMs;
 }
 
 static void setupTransportInterface( MQTTTransportInterface_t * pTransport )
@@ -208,7 +204,7 @@ static MQTTStatus_t modifyIncomingPacketPubAck( MQTTTransportRecvFunc_t readFunc
                                                 MQTTPacketInfo_t * pIncomingPacket,
                                                 int cmock_num_calls )
 {
-    /* Remove unsued parameter warnings. */
+    /* Remove unused parameter warnings. */
     ( void ) readFunc;
     ( void ) networkContext;
     ( void ) cmock_num_calls;
@@ -240,7 +236,7 @@ static MQTTStatus_t modifyIncomingPacketPubRel( MQTTTransportRecvFunc_t readFunc
                                                 MQTTPacketInfo_t * pIncomingPacket,
                                                 int cmock_num_calls )
 {
-    /* Remove unsued parameter warnings. */
+    /* Remove unused parameter warnings. */
     ( void ) readFunc;
     ( void ) networkContext;
     ( void ) cmock_num_calls;
@@ -256,7 +252,7 @@ static MQTTStatus_t modifyIncomingPacketPubComp( MQTTTransportRecvFunc_t readFun
                                                  MQTTPacketInfo_t * pIncomingPacket,
                                                  int cmock_num_calls )
 {
-    /* Remove unsued parameter warnings. */
+    /* Remove unused parameter warnings. */
     ( void ) readFunc;
     ( void ) networkContext;
     ( void ) cmock_num_calls;
@@ -272,7 +268,7 @@ static MQTTStatus_t modifyIncomingPacketPingResp( MQTTTransportRecvFunc_t readFu
                                                   MQTTPacketInfo_t * pIncomingPacket,
                                                   int cmock_num_calls )
 {
-    /* Remove unsued parameter warnings. */
+    /* Remove unused parameter warnings. */
     ( void ) readFunc;
     ( void ) networkContext;
     ( void ) cmock_num_calls;
@@ -289,7 +285,7 @@ static MQTTStatus_t modifyIncomingPacketSubAck( MQTTTransportRecvFunc_t readFunc
                                                 MQTTPacketInfo_t * pIncomingPacket,
                                                 int cmock_num_calls )
 {
-    /* Remove unsued parameter warnings. */
+    /* Remove unused parameter warnings. */
     ( void ) readFunc;
     ( void ) networkContext;
     ( void ) cmock_num_calls;
@@ -317,12 +313,23 @@ void test_MQTT_ProcessLoop_handleIncomingPublish( void )
     mqttStatus = MQTT_Init( &context, &transport, &callbacks, &networkBuffer );
     TEST_ASSERT_EQUAL( MQTTSuccess, mqttStatus );
 
+    /* Assume QoS = 1 so that a PUBACK will be sent after receiving PUBLISH. */
     MQTT_GetIncomingPacketTypeAndLength_Stub( modifyIncomingPacketPublish );
-    /*MQTT_DeserializePublish_ExpectAnyArgsAndReturn( MQTTSuccess ); */
-    MQTT_DeserializePublish_Expect();
+    MQTT_DeserializePublish_ExpectAnyArgsAndReturn( MQTTSuccess );
     MQTT_UpdateStatePublish_ExpectAnyArgsAndReturn( MQTTPubAckSend );
     MQTT_SerializeAck_ExpectAnyArgsAndReturn( MQTTSuccess );
     MQTT_UpdateStateAck_ExpectAnyArgsAndReturn( MQTTPublishDone );
+
+    mqttStatus = MQTT_ProcessLoop( &context, MQTT_NO_TIMEOUT_MS );
+    TEST_ASSERT_TRUE( context.controlPacketSent );
+    TEST_ASSERT_EQUAL( MQTTSuccess, mqttStatus );
+
+    /* Assume QoS = 2 so that a PUBREC will be sent after receiving PUBLISH. */
+    MQTT_GetIncomingPacketTypeAndLength_Stub( modifyIncomingPacketPublish );
+    MQTT_DeserializePublish_ExpectAnyArgsAndReturn( MQTTSuccess );
+    MQTT_UpdateStatePublish_ExpectAnyArgsAndReturn( MQTTPubRecSend );
+    MQTT_SerializeAck_ExpectAnyArgsAndReturn( MQTTSuccess );
+    MQTT_UpdateStateAck_ExpectAnyArgsAndReturn( MQTTPubRecPending );
 
     mqttStatus = MQTT_ProcessLoop( &context, MQTT_NO_TIMEOUT_MS );
     TEST_ASSERT_TRUE( context.controlPacketSent );
@@ -380,8 +387,6 @@ void test_MQTT_ProcessLoop_handleIncomingAck( void )
     MQTT_GetIncomingPacketTypeAndLength_Stub( modifyIncomingPacketPubComp );
     MQTT_DeserializeAck_ExpectAnyArgsAndReturn( MQTTSuccess );
     MQTT_UpdateStateAck_ExpectAnyArgsAndReturn( MQTTPublishDone );
-    MQTT_SerializeAck_ExpectAnyArgsAndReturn( MQTTSuccess );
-    MQTT_UpdateStateAck_ExpectAnyArgsAndReturn( MQTTStateNull );
 
     mqttStatus = MQTT_ProcessLoop( &context, MQTT_NO_TIMEOUT_MS );
     TEST_ASSERT_EQUAL( MQTTSuccess, mqttStatus );
