@@ -24,7 +24,7 @@
 #define MQTT_PACKET_TYPE_INVALID     ( 0U )
 
 /**
- * @brief Number of seconds in a millisecond.
+ * @brief Number of milliseconds in a second.
  */
 #define MQTT_ONE_SECOND_TO_MS        ( 1000U )
 
@@ -41,8 +41,9 @@
 
 /**
  * @brief Length of the MQTT network buffer.
+ * 1232 bytes is the size of the largest packet (ACK) for running unit tests.
  */
-#define MQTT_TEST_BUFFER_LENGTH      ( 2056 )
+#define MQTT_TEST_BUFFER_LENGTH      ( 1232 )
 
 /**
  * @brief The packet type to be received by the process loop.
@@ -635,8 +636,8 @@ void test_MQTT_ProcessLoop_handleKeepAlive_happy_paths( void )
     context.waitingForPingResp = true;
     context.keepAliveIntervalSec = 1;
     context.lastPacketTime = 0;
-    context.pingReqSendTimeMs = getTime();
-    context.pingRespTimeoutMs = getTime();
+    context.pingReqSendTimeMs = MQTT_ONE_SECOND_TO_MS;
+    context.pingRespTimeoutMs = MQTT_ONE_SECOND_TO_MS;
     expectProcessLoopCalls( &context, MQTTStateNull, MQTTStateNull,
                             MQTTSuccess, MQTTStateNull,
                             MQTTSuccess, false );
