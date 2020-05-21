@@ -713,3 +713,23 @@ void test_MQTT_ProcessLoop_multiple_iterations( void )
     mqttStatus = MQTT_ProcessLoop( &context, MQTT_SAMPLE_TIMEOUT_MS );
     TEST_ASSERT_EQUAL( MQTTRecvFailed, mqttStatus );
 }
+
+void test_MQTT_Subscribe_happy_paths( void )
+{
+    MQTTStatus_t mqttStatus;
+    MQTTContext_t context;
+    MQTTTransportInterface_t transport;
+    MQTTFixedBuffer_t networkBuffer;
+    MQTTApplicationCallbacks_t callbacks;
+
+    setupTransportInterface( &transport );
+    setupCallbacks( &callbacks );
+    setupNetworkBuffer( &networkBuffer );
+    setupSubscriptionInfo();
+
+    mqttStatus = MQTT_Init( &context, &transport, &callbacks, &networkBuffer );
+    TEST_ASSERT_EQUAL( MQTTSuccess, mqttStatus );
+
+    mqttStatus = MQTT_Subscribe( &context, );
+    TEST_ASSERT_EQUAL( MQTTRecvFailed, mqttStatus );
+}
