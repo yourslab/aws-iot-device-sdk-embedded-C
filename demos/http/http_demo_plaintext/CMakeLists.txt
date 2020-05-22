@@ -12,17 +12,16 @@ target_link_libraries(
     ${DEMO_NAME}
     PRIVATE
         http
-        logging
 )
 
 target_include_directories(
-    logging
-    PRIVATE
-        ${CMAKE_CURRENT_LIST_DIR}
-)
-
-target_include_directories(
-    http
+    mqtt
     PUBLIC
         ${CMAKE_CURRENT_LIST_DIR}
+)
+
+target_include_directories(
+    ${DEMO_NAME}
+    PUBLIC
+        ${LOGGING_INCLUDE_DIRS}
 )
