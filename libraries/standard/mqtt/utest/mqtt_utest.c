@@ -11,43 +11,53 @@
 /**
  * @brief A valid starting packet ID per MQTT spec. Start from 1.
  */
-#define MQTT_NEXT_PACKET_ID_START       ( 1 )
+#define MQTT_NEXT_PACKET_ID_START          ( 1 )
 
 /**
  * @brief A PINGREQ packet is always 2 bytes in size, defined by MQTT 3.1.1 spec.
  */
-#define MQTT_PACKET_PINGREQ_SIZE        ( 2U )
+#define MQTT_PACKET_PINGREQ_SIZE           ( 2U )
 
 /**
  * @brief A packet type not handled by MQTT_ProcessLoop.
  */
-#define MQTT_PACKET_TYPE_INVALID        ( 0U )
+#define MQTT_PACKET_TYPE_INVALID           ( 0U )
 
 /**
  * @brief Number of milliseconds in a second.
  */
-#define MQTT_ONE_SECOND_TO_MS           ( 1000U )
+#define MQTT_ONE_SECOND_TO_MS              ( 1000U )
 
 /**
  * @brief Zero timeout in the process loop implies one iteration.
  */
-#define MQTT_NO_TIMEOUT_MS              ( 0U )
+#define MQTT_NO_TIMEOUT_MS                 ( 0U )
 
 /**
  * @brief Length of time spent for single test case with
  * multiple iterations spent in the process loop for coverage.
  */
-#define MQTT_SAMPLE_TIMEOUT_MS          ( 1U )
+#define MQTT_SAMPLE_TIMEOUT_MS             ( 1U )
 
 /**
  * @brief Sample length of remaining serialized data.
  */
-#define MQTT_SAMPLE_REMAINING_LENGTH    ( 64 )
+#define SAMPLE_REMAINING_LENGTH            ( 64 )
 
 /**
  * @brief Length of the MQTT network buffer.
  */
-#define MQTT_TEST_BUFFER_LENGTH         ( 128 )
+#define MQTT_TEST_BUFFER_LENGTH            ( 128 )
+
+/**
+ * @brief Sample topic filter to subscribe to.
+ */
+#define MQTT_SAMPLE_TOPIC_FILTER           "iot"
+
+/**
+ * @brief Length of sample topic filter.
+ */
+#define MQTT_SAMPLE_TOPIC_FILTER_LENGTH    ( sizeof( MQTT_SAMPLE_TOPIC_FILTER ) - 1 )
 
 /**
  * @brief The packet type to be received by the process loop.
@@ -719,6 +729,8 @@ void test_MQTT_ProcessLoop_multiple_iterations( void )
 static void setupSubscriptionInfo( MQTTSubscribeInfo_t * subscribeInfo )
 {
     subscribeInfo->qos = MQTTQoS1;
+    subscribeInfo->pTopicFilter = MQTT_SAMPLE_TOPIC_FILTER;
+    subscribeInfo->topicFilterLength = MQTT_SAMPLE_TOPIC_FILTER_LENGTH;
 }
 
 void test_MQTT_Subscribe_happy_paths( void )
@@ -738,6 +750,12 @@ void test_MQTT_Subscribe_happy_paths( void )
     mqttStatus = MQTT_Init( &context, &transport, &callbacks, &networkBuffer );
     TEST_ASSERT_EQUAL( MQTTSuccess, mqttStatus );
 
-    mqttStatus = MQTT_Subscribe( &context, );
-    TEST_ASSERT_EQUAL( MQTTRecvFailed, mqttStatus );
+    MQTT_GetSubscribePacketSize_ExpectAnyArgsAndReturn( MQTTSuccess );
+    MQTT_SerializeSubscribe_ExpectAnyArgsAndReturn( MQTTSuccess );
+
+    mqttStatus = MQTT_Subscribe( &context, &subscribeInfo, 1,
+                                 MQTT_NEXT_PACKET_ID_START );
+    TEST_ASSERT_EQUAL( MQTTSuccess, mqttStatus );
 }
+
+/* ========================================================================== */
