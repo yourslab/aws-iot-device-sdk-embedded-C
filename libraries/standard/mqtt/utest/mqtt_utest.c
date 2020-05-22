@@ -714,6 +714,13 @@ void test_MQTT_ProcessLoop_multiple_iterations( void )
     TEST_ASSERT_EQUAL( MQTTRecvFailed, mqttStatus );
 }
 
+/* ========================  Testing MQTT_Subscribe ========================= */
+
+static void setupSubscriptionInfo( MQTTSubscribeInfo_t * subscribeInfo )
+{
+    subscribeInfo->qos = MQTTQoS1;
+}
+
 void test_MQTT_Subscribe_happy_paths( void )
 {
     MQTTStatus_t mqttStatus;
@@ -721,11 +728,12 @@ void test_MQTT_Subscribe_happy_paths( void )
     MQTTTransportInterface_t transport;
     MQTTFixedBuffer_t networkBuffer;
     MQTTApplicationCallbacks_t callbacks;
+    MQTTSubscribeInfo_t subscribeInfo;
 
     setupTransportInterface( &transport );
     setupCallbacks( &callbacks );
     setupNetworkBuffer( &networkBuffer );
-    setupSubscriptionInfo();
+    setupSubscriptionInfo( &subscribeInfo );
 
     mqttStatus = MQTT_Init( &context, &transport, &callbacks, &networkBuffer );
     TEST_ASSERT_EQUAL( MQTTSuccess, mqttStatus );
