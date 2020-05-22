@@ -40,10 +40,15 @@
 #define MQTT_SAMPLE_TIMEOUT_MS       ( 1U )
 
 /**
+ * @brief Sample length of remaining serialized data.
+ */
+#define SAMPLE_REMAINING_LENGTH      ( 64 )
+
+/**
  * @brief Length of the MQTT network buffer.
  * 1232 bytes is the size of the largest packet (ACK) for running unit tests.
  */
-#define MQTT_TEST_BUFFER_LENGTH      ( 1232 )
+#define MQTT_TEST_BUFFER_LENGTH      ( 128 )
 
 /**
  * @brief The packet type to be received by the process loop.
@@ -239,6 +244,7 @@ static MQTTStatus_t modifyIncomingPacket( MQTTTransportRecvFunc_t readFunc,
     ( void ) cmock_num_calls;
 
     pIncomingPacket->type = currentPacketType;
+    pIncomingPacket->remainingLength = SAMPLE_REMAINING_LENGTH;
     return modifyIncomingPacketStatus;
 }
 
