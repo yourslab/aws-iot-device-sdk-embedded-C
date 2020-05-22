@@ -46,7 +46,6 @@
 
 /**
  * @brief Length of the MQTT network buffer.
- * 1232 bytes is the size of the largest packet (ACK) for running unit tests.
  */
 #define MQTT_TEST_BUFFER_LENGTH      ( 128 )
 
