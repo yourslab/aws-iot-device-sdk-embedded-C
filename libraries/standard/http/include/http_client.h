@@ -177,9 +177,9 @@ typedef int32_t ( * HTTPTransportRecv_t )( HTTPNetworkContext_t * pContext,
  */
 typedef struct HTTPTransportInterface
 {
-    HTTPTransportRecv_t recv;        /**< Transport receive interface */
-    HTTPTransportSend_t send;        /**< Transport interface send interface. */
-    HTTPNetworkContext_t * pContext; /**< User defined transport interface context. */
+    HTTPTransportRecv_t recv;      /**< Transport receive interface */
+    HTTPTransportSend_t send;      /**< Transport interface send interface. */
+    HTTPNetworkContext_t pContext; /**< User defined transport interface context. */
 } HTTPTransportInterface_t;
 
 /**
