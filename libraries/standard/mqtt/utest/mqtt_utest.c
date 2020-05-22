@@ -73,6 +73,12 @@ static uint8_t currentPacketType = MQTT_PACKET_TYPE_INVALID;
 static MQTTStatus_t modifyIncomingPacketStatus = MQTTSuccess;
 
 /**
+ * @brief The return value of modifyPacketSize(...) CMock callback that replaces
+ * a call to MQTT_GetPingreqPacketSize.
+ */
+static MQTTStatus_t modifyPacketSizeStatus = MQTTSuccess;
+
+/**
  * @brief Time at the beginning of each test. Note that this is not updated with
  * a real clock. Instead, we simply increment this variable.
  */
@@ -270,7 +276,7 @@ static MQTTStatus_t modifyPacketSize( size_t * pPacketSize,
     ( void ) cmock_num_calls;
 
     *pPacketSize = MQTT_PACKET_PINGREQ_SIZE;
-    return MQTTSuccess;
+    return modifyPacketSizeStatus;
 }
 
 /**
@@ -984,6 +990,93 @@ void test_MQTT_Unsubscribe_error_path( void )
     mqttStatus = MQTT_Unsubscribe( &context, &subscribeInfo, 1,
                                    MQTT_NEXT_PACKET_ID_START );
     TEST_ASSERT_EQUAL( MQTTSendFailed, mqttStatus );
+}
+
+/* =========================  Testing MQTT_Ping ============================= */
+
+/**
+ * @brief This test case verifies that MQTT_Ping returns MQTTBadParameter
+ * with context parameter is NULL.
+ */
+void test_MQTT_Ping_invalid_params( void )
+{
+    MQTTStatus_t mqttStatus;
+
+    /* Call ping with a NULL context. */
+    mqttStatus = MQTT_Ping( NULL );
+    TEST_ASSERT_EQUAL( MQTTBadParameter, mqttStatus );
+}
+
+/**
+ * @brief This test case verifies that MQTT_Ping returns successfully
+ * when valid parameters are passed and all bytes are sent.
+ */
+void test_MQTT_Ping_happy_path( void )
+{
+    MQTTStatus_t mqttStatus;
+    MQTTContext_t context;
+    MQTTTransportInterface_t transport;
+    MQTTFixedBuffer_t networkBuffer;
+    MQTTApplicationCallbacks_t callbacks;
+
+    setupTransportInterface( &transport,
+                             transportSendSuccess, transportRecvSuccess );
+    setupCallbacks( &callbacks );
+    setupNetworkBuffer( &networkBuffer );
+
+    /* Initialize context. */
+    mqttStatus = MQTT_Init( &context, &transport, &callbacks, &networkBuffer );
+    TEST_ASSERT_EQUAL( MQTTSuccess, mqttStatus );
+    /* Verify MQTTSuccess is returned. */
+    modifyPacketSizeStatus = MQTTSuccess;
+    MQTT_GetPingreqPacketSize_Stub( modifyPacketSize );
+    MQTT_SerializePingreq_ExpectAnyArgsAndReturn( MQTTSuccess );
+    /* Expect the above calls when running MQTT_Ping. */
+    mqttStatus = MQTT_Ping( &context );
+    TEST_ASSERT_EQUAL( MQTTSuccess, mqttStatus );
+
+    TEST_ASSERT_EQUAL( context.lastPacketTime, context.pingReqSendTimeMs );
+    TEST_ASSERT_TRUE( context.waitingForPingResp );
+}
+
+/**
+ * @brief This test case verifies that MQTT_Ping returns MQTTSendFailed
+ * if transport interface send returns an error.
+ */
+void test_MQTT_Ping_error_path( void )
+{
+    MQTTStatus_t mqttStatus;
+    MQTTContext_t context;
+    MQTTTransportInterface_t transport;
+    MQTTFixedBuffer_t networkBuffer;
+    MQTTApplicationCallbacks_t callbacks;
+
+    setupTransportInterface( &transport,
+                             transportSendFail, transportRecvFail );
+    setupCallbacks( &callbacks );
+    setupNetworkBuffer( &networkBuffer );
+
+    /* Initialize context. */
+    mqttStatus = MQTT_Init( &context, &transport, &callbacks, &networkBuffer );
+    TEST_ASSERT_EQUAL( MQTTSuccess, mqttStatus );
+    /* Verify MQTTSendFailed is propagated when transport interface returns an error. */
+    modifyPacketSizeStatus = MQTTSuccess;
+    MQTT_GetPingreqPacketSize_Stub( modifyPacketSize );
+    MQTT_SerializePingreq_ExpectAnyArgsAndReturn( MQTTSuccess );
+    /* Expect the above calls when running MQTT_Ping. */
+    mqttStatus = MQTT_Ping( &context );
+    TEST_ASSERT_EQUAL( MQTTSendFailed, mqttStatus );
+
+
+    /* Initialize context. */
+    mqttStatus = MQTT_Init( &context, &transport, &callbacks, &networkBuffer );
+    TEST_ASSERT_EQUAL( MQTTSuccess, mqttStatus );
+    /* Verify MQTTBadParameter is propagated when getting PINGREQ packet size fails. */
+    modifyPacketSizeStatus = MQTTBadParameter;
+    MQTT_GetPingreqPacketSize_Stub( modifyPacketSize );
+    /* Expect the above calls when running MQTT_Ping. */
+    mqttStatus = MQTT_Ping( &context );
+    TEST_ASSERT_EQUAL( MQTTBadParameter, mqttStatus );
 }
 
 /* ========================================================================== */
