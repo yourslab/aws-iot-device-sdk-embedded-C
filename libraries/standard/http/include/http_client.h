@@ -129,7 +129,8 @@
  * define HTTPNetworkContext to the type of their network context. This context
  * is passed into the network interface functions.
  */
-typedef struct networkContext_t * HTTPNetworkContext_t;
+struct HTTPNetworkContext;
+typedef struct HTTPNetworkContext HTTPNetworkContext_t;
 
 /**
  * @brief Transport interface for sending data over the network.
