@@ -11,43 +11,43 @@
 /**
  * @brief A valid starting packet ID per MQTT spec. Start from 1.
  */
-#define MQTT_NEXT_PACKET_ID_START    ( 1 )
+#define MQTT_NEXT_PACKET_ID_START       ( 1 )
 
 /**
  * @brief A PINGREQ packet is always 2 bytes in size, defined by MQTT 3.1.1 spec.
  */
-#define MQTT_PACKET_PINGREQ_SIZE     ( 2U )
+#define MQTT_PACKET_PINGREQ_SIZE        ( 2U )
 
 /**
  * @brief A packet type not handled by MQTT_ProcessLoop.
  */
-#define MQTT_PACKET_TYPE_INVALID     ( 0U )
+#define MQTT_PACKET_TYPE_INVALID        ( 0U )
 
 /**
  * @brief Number of milliseconds in a second.
  */
-#define MQTT_ONE_SECOND_TO_MS        ( 1000U )
+#define MQTT_ONE_SECOND_TO_MS           ( 1000U )
 
 /**
  * @brief Zero timeout in the process loop implies one iteration.
  */
-#define MQTT_NO_TIMEOUT_MS           ( 0U )
+#define MQTT_NO_TIMEOUT_MS              ( 0U )
 
 /**
  * @brief Length of time spent for single test case with
  * multiple iterations spent in the process loop for coverage.
  */
-#define MQTT_SAMPLE_TIMEOUT_MS       ( 1U )
+#define MQTT_SAMPLE_TIMEOUT_MS          ( 1U )
 
 /**
  * @brief Sample length of remaining serialized data.
  */
-#define SAMPLE_REMAINING_LENGTH      ( 64 )
+#define MQTT_SAMPLE_REMAINING_LENGTH    ( 64 )
 
 /**
  * @brief Length of the MQTT network buffer.
  */
-#define MQTT_TEST_BUFFER_LENGTH      ( 128 )
+#define MQTT_TEST_BUFFER_LENGTH         ( 128 )
 
 /**
  * @brief The packet type to be received by the process loop.
@@ -243,7 +243,7 @@ static MQTTStatus_t modifyIncomingPacket( MQTTTransportRecvFunc_t readFunc,
     ( void ) cmock_num_calls;
 
     pIncomingPacket->type = currentPacketType;
-    pIncomingPacket->remainingLength = SAMPLE_REMAINING_LENGTH;
+    pIncomingPacket->remainingLength = MQTT_SAMPLE_REMAINING_LENGTH;
     return modifyIncomingPacketStatus;
 }
 
