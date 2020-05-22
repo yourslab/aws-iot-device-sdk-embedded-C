@@ -1079,4 +1079,29 @@ void test_MQTT_Ping_error_path( void )
     TEST_ASSERT_EQUAL( MQTTBadParameter, mqttStatus );
 }
 
+/* ======================  Testing MQTT_GetPacketId ========================= */
+
+/**
+ * @brief This test case verifies that MQTT_GetPacketId returns the current
+ * packet ID from the MQTT context and should force it to 1 upon overflow.
+ */
+void test_MQTT_GetPacketId_complete( void )
+{
+    MQTTContext_t context;
+
+    /* MQTT_GetPacketId should increment on every call. */
+    context.nextPacketId = MQTT_NEXT_PACKET_ID_START;
+    TEST_ASSERT_EQUAL( MQTT_NEXT_PACKET_ID_START,
+                       MQTT_GetPacketId( &context ) );
+    TEST_ASSERT_EQUAL( MQTT_NEXT_PACKET_ID_START + 1,
+                       MQTT_GetPacketId( &context ) );
+
+    /* Upon overflow, MQTT_GetPacketId should force next packet ID to 1. */
+    context.nextPacketId = UINT16_MAX;
+    TEST_ASSERT_EQUAL( UINT16_MAX,
+                       MQTT_GetPacketId( &context ) );
+    TEST_ASSERT_EQUAL( 1,
+                       MQTT_GetPacketId( &context ) );
+}
+
 /* ========================================================================== */
