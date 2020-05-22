@@ -127,7 +127,7 @@ static const char * pTestResponse = "HTTP/1.1 200 OK\r\n"
 #define HEADER_NOT_IN_BUFFER    "header-not-in-buffer"
 
 /* File-scoped Global variables */
-static HTTPStatus_t retCode = HTTP_PARSER_INTERNAL_ERROR;
+static HTTPStatus_t retCode = HTTP_SUCCESS;
 static uint8_t testBuffer[ HTTP_TEST_BUFFER_SIZE ] = { 0 };
 static HTTPRequestHeaders_t testHeaders = { 0 };
 static _headers_t expectedHeaders = { 0 };
@@ -322,7 +322,7 @@ void setUp()
 /* Called after each test method. */
 void tearDown()
 {
-    retCode = HTTP_PARSER_INTERNAL_ERROR;
+    retCode = HTTP_SUCCESS;
     memset( &testHeaders, 0, sizeof( testHeaders ) );
     memset( testBuffer, 0, sizeof( testBuffer ) );
     memset( &expectedHeaders, 0, sizeof( expectedHeaders ) );
@@ -390,7 +390,7 @@ static void setupBuffer( HTTPRequestHeaders_t * pRequestHeaders )
  */
 void test_Http_InitializeRequestHeaders_Happy_Path()
 {
-    HTTPStatus_t httpStatus = HTTP_PARSER_INTERNAL_ERROR;
+    HTTPStatus_t httpStatus = HTTP_SUCCESS;
     HTTPRequestHeaders_t requestHeaders = { 0 };
     HTTPRequestInfo_t requestInfo = { 0 };
     int numBytes = 0;
@@ -424,7 +424,7 @@ void test_Http_InitializeRequestHeaders_Happy_Path()
  */
 void test_Http_InitializeRequestHeaders_Invalid_Params()
 {
-    HTTPStatus_t httpStatus = HTTP_PARSER_INTERNAL_ERROR;
+    HTTPStatus_t httpStatus = HTTP_SUCCESS;
     HTTPRequestHeaders_t requestHeaders = { 0 };
     HTTPRequestInfo_t requestInfo = { 0 };
 
@@ -469,7 +469,7 @@ void test_Http_InitializeRequestHeaders_Invalid_Params()
  */
 void test_Http_InitializeRequestHeaders_ReqInfo()
 {
-    HTTPStatus_t httpStatus = HTTP_PARSER_INTERNAL_ERROR;
+    HTTPStatus_t httpStatus = HTTP_SUCCESS;
     HTTPRequestHeaders_t requestHeaders = { 0 };
     HTTPRequestInfo_t requestInfo = { 0 };
     int numBytes = 0;
@@ -509,7 +509,7 @@ void test_Http_InitializeRequestHeaders_ReqInfo()
  */
 void test_Http_InitializeRequestHeaders_Insufficient_Memory()
 {
-    HTTPStatus_t httpStatus = HTTP_PARSER_INTERNAL_ERROR;
+    HTTPStatus_t httpStatus = HTTP_SUCCESS;
     HTTPRequestHeaders_t requestHeaders = { 0 };
     HTTPRequestInfo_t requestInfo = { 0 };
 
@@ -535,7 +535,7 @@ void test_Http_InitializeRequestHeaders_Insufficient_Memory()
  */
 void test_Http_AddHeader_Happy_Path()
 {
-    HTTPStatus_t httpStatus = HTTP_PARSER_INTERNAL_ERROR;
+    HTTPStatus_t httpStatus = HTTP_SUCCESS;
     HTTPRequestHeaders_t requestHeaders = { 0 };
     int numBytes = 0;
 
@@ -576,7 +576,7 @@ void test_Http_AddHeader_Happy_Path()
  */
 void test_Http_AddHeader_Invalid_Parameters()
 {
-    HTTPStatus_t httpStatus = HTTP_PARSER_INTERNAL_ERROR;
+    HTTPStatus_t httpStatus = HTTP_SUCCESS;
     HTTPRequestHeaders_t requestHeaders = { 0 };
 
     /* Test a NULL request headers interface. */
@@ -624,7 +624,7 @@ void test_Http_AddHeader_Invalid_Parameters()
  */
 void test_Http_AddHeader_Extra_Header_Sufficient_Memory()
 {
-    HTTPStatus_t httpStatus = HTTP_PARSER_INTERNAL_ERROR;
+    HTTPStatus_t httpStatus = HTTP_SUCCESS;
     HTTPRequestHeaders_t requestHeaders = { 0 };
     int numBytes = 0;
 
@@ -666,7 +666,7 @@ void test_Http_AddHeader_Extra_Header_Sufficient_Memory()
  */
 void test_Http_AddHeader_Extra_Header_Insufficient_Memory()
 {
-    HTTPStatus_t httpStatus = HTTP_PARSER_INTERNAL_ERROR;
+    HTTPStatus_t httpStatus = HTTP_SUCCESS;
     HTTPRequestHeaders_t requestHeaders = { 0 };
     int numBytes = 0;
 
@@ -710,7 +710,7 @@ void test_Http_AddHeader_Extra_Header_Insufficient_Memory()
  */
 void test_Http_AddHeader_Single_Header_Insufficient_Memory()
 {
-    HTTPStatus_t httpStatus = HTTP_PARSER_INTERNAL_ERROR;
+    HTTPStatus_t httpStatus = HTTP_SUCCESS;
     HTTPRequestHeaders_t requestHeaders = { 0 };
     int numBytes = 0;
 
@@ -1220,7 +1220,7 @@ void test_Http_ReadHeader_With_HttpParser_Internal_Error()
                                      strlen( HEADER_IN_BUFFER ),
                                      &pValueLoc,
                                      &valueLen );
-    TEST_ASSERT_EQUAL( HTTP_PARSER_INTERNAL_ERROR, retCode );
+    TEST_ASSERT_EQUAL( HTTP_SUCCESS, retCode );
 }
 
 /**
