@@ -1328,7 +1328,7 @@ void test_HTTPClient_Send_not_enough_request_headers( void )
 {
     HTTPStatus_t returnStatus = HTTP_SUCCESS;
 
-    requestHeaders.headersLen = MINIMUM_REQUEST_LINE_LENGTH - 1;
+    requestHeaders.headersLen = HTTP_MINIMUM_REQUEST_LINE_LENGTH - 1;
     returnStatus = HTTPClient_Send( &transportInterface,
                                     &requestHeaders,
                                     NULL,
