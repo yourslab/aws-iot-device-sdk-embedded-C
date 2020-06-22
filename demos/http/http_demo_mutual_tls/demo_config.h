@@ -50,36 +50,72 @@
 /************ End of logging configuration ****************/
 
 /**
- * @brief HTTP server host name.
+ * @brief Your AWS IoT Core endpoint.
  *
- * This demo uses httpbin.org: A simple HTTP Request & Response Service.
+ * @note Your AWS IoT Core endpoint can be found in the AWS IoT console under
+ * Settings/Custom Endpoint, or using the describe-endpoint API.
  */
-#define SERVER_HOST                       "httpbin.org"
+#define IOT_CORE_ENDPOINT    "a36385mjytouy4-ats.iot.us-west-2.amazonaws.com"
+
 
 /**
- * @brief HTTP server port number.
+ * @brief ALPN protocol name to be sent as part of the ClientHello message.
  *
- * In general, port 443 is for TLS HTTP connections.
+ * @note When using ALPN, port 443 must be used to connect to AWS IoT Core.
  */
-#define SERVER_PORT                       443
+#define IOT_CORE_ALPN_PROTOCOL_NAME       "\x0ex-amzn-http-ca"
 
 /**
- * @brief Path of the file containing the server's root CA certificate for TLS authentication.
+ * @brief AWS IoT Core server port number for HTTPS connections.
+ *
+ * For this demo, an X.509 certificate is used to verify the client.
+ *
+ * @note Port 443 requires use of the ALPN TLS extension with the ALPN protocol
+ * name being x-amzn-http-ca. When using port 8443, ALPN is not required.
+ */
+#define IOT_CORE_PORT                     443
+
+/**
+ * @brief Path of the file containing Amazon's root CA certificate for TLS
+ * authentication to AWS IoT Core.
+ *
+ * Amazon's root CA certificate is automatically downloaded to the certificates
+ * directory from @ref https://www.amazontrust.com/repository/AmazonRootCA1.pem
+ * using the CMake build system.
  *
  * @note This certificate should be PEM-encoded.
  */
-#define SERVER_CERT_PATH                  "certificates/amazon.crt"
+#define ROOT_CA_PATH                      "certificates/AmazonRootCA1.crt"
 
 /**
- * @brief Paths for different HTTP methods for specified host.
+ * @brief Path of the file containing the client's certificate for TLS
+ * authentication to AWS IoT Core.
  *
- * For httpbin.org, see http://httpbin.org/#/HTTP_Methods for details on
- * supported REST API.
+ * @note This certificate should be PEM-encoded and must have an associated
+ * policy from AWS IoT core for the demo to function correctly.
  */
-#define GET_PATH                          "/get"
-#define HEAD_PATH                         "/get"
-#define PUT_PATH                          "/put"
-#define POST_PATH                         "/post"
+#define CLIENT_CERT_PATH                  "certificates/client.crt"
+
+/**
+ * @brief Path of the file containing the client's private key for
+ * TLS client authentication.
+ *
+ * @note This key should be PEM-encoded and must have an associated
+ * policy from AWS IoT core for the demo to function correctly.
+ */
+#define CLIENT_PRIVATE_KEY_PATH           "certificates/client.key"
+
+/**
+ * @brief This endpoint can be used to publish a message to a topic named topic
+ * on AWS IoT Core.
+ *
+ * Each client certificate has an associated policy document that must be
+ * configured to support the path below for this demo to work correctly.
+ *
+ * @note QoS=1 implies the message is delivered to all subscribers of the topic
+ * at least once.
+ */
+#define POST_PATH                         "/topics/topic?qos=1"
 
 /**
  * @brief Transport timeout in milliseconds for transport send and receive.
@@ -89,11 +125,11 @@
 /**
  * @brief The length in bytes of the user buffer.
  */
-#define USER_BUFFER_LENGTH                ( 2048 )
+#define USER_BUFFER_LENGTH                ( 4096 )
 
 /**
  * @brief Request body to send for PUT and POST requests in this demo.
  */
-#define REQUEST_BODY                      "Hello, world!"
+#define REQUEST_BODY                      "{ \"message\": \"Hello, world\" }"
 
 #endif /* ifndef DEMO_CONFIG_H_ */

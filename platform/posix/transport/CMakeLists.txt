@@ -16,3 +16,10 @@ add_library( openssl_posix
 target_include_directories( openssl_posix PUBLIC 
                                             ${COMMON_TRANSPORT_INCLUDE_PUBLIC_DIRS}
                                             ${LOGGING_INCLUDE_DIRS} )
+
+# Create target for POSIX implementation for reconnect.
+add_library( reconnect_posix
+             ${RECONNECT_SOURCES} )
+
+target_include_directories( reconnect_posix PUBLIC 
+                                        ${COMMON_TRANSPORT_INCLUDE_PUBLIC_DIRS} )

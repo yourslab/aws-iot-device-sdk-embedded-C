@@ -27,17 +27,20 @@
 /* POSIX socket includes. */
 #include <errno.h>
 #include <netdb.h>
+#include <time.h>
 #include <poll.h>
 #include <unistd.h>
 #include <arpa/inet.h>
 
-/* Socket includes. */
 #include <sys/socket.h>
 #include <sys/types.h>
 
 /* OpenSSL includes. */
 #include <openssl/ssl.h>
 #include <openssl/bio.h>
+
+/* HTTP Client API header. */
+#include "http_client.h"
 
 /* Transport includes. */
 #include "reconnect.h"
@@ -47,32 +50,14 @@
 /* Demo Config header. */
 #include "demo_config.h"
 
-/* HTTP API header. */
-#include "http_client.h"
-
-/* Check that hostname of the server is defined. */
-#ifndef SERVER_HOST
-    #error "Please define a SERVER_HOST."
+/* Check that AWS IoT Core endpoint is defined. */
+#ifndef IOT_CORE_ENDPOINT
+    #error "IOT_CORE_ENDPOINT must be defined to your AWS IoT Core endpoint."
 #endif
 
-/* Check that TLS port of the server is defined. */
-#ifndef SERVER_PORT
-    #error "Please define a SERVER_PORT."
-#endif
-
-/* Check that a path for HTTP Method GET is defined. */
-#ifndef GET_PATH
-    #error "Please define a GET_PATH."
-#endif
-
-/* Check that a path for HTTP Method HEAD is defined. */
-#ifndef HEAD_PATH
-    #error "Please define a HEAD_PATH."
-#endif
-
-/* Check that a path for HTTP Method PUT is defined. */
-#ifndef PUT_PATH
-    #error "Please define a PUT_PATH."
+/* Check that TLS port used for AWS IoT Core is defined. */
+#ifndef IOT_CORE_PORT
+    #error "Please define a IOT_CORE_PORT."
 #endif
 
 /* Check that a path for HTTP Method POST is defined. */
@@ -82,12 +67,12 @@
 
 /* Check that transport timeout for transport send and receive is defined. */
 #ifndef TRANSPORT_SEND_RECV_TIMEOUT_MS
-    #define TRANSPORT_SEND_RECV_TIMEOUT_MS    ( 0 )
+    #define TRANSPORT_SEND_RECV_TIMEOUT_MS    ( 1000 )
 #endif
 
 /* Check that size of the user buffer is defined. */
 #ifndef USER_BUFFER_LENGTH
-    #define USER_BUFFER_LENGTH    ( 2048 )
+    #define USER_BUFFER_LENGTH    ( 1024 )
 #endif
 
 /* Check that a request body to send for PUT and POST requests is defined. */
@@ -98,62 +83,47 @@
 /**
  * @brief The length of the HTTP server host name.
  */
-#define SERVER_HOST_LENGTH            ( sizeof( SERVER_HOST ) - 1 )
+#define IOT_CORE_ENDPOINT_LENGTH              ( sizeof( IOT_CORE_ENDPOINT ) - 1 )
 
 /**
- * @brief The length of the HTTP GET method.
+ * @brief The length of the ALPN protocol name.
  */
-#define HTTP_METHOD_GET_LENGTH        ( sizeof( HTTP_METHOD_GET ) - 1 )
-
-/**
- * @brief The length of the HTTP HEAD method.
- */
-#define HTTP_METHOD_HEAD_LENGTH       ( sizeof( HTTP_METHOD_HEAD ) - 1 )
-
-/**
- * @brief The length of the HTTP PUT method.
- */
-#define HTTP_METHOD_PUT_LENGTH        ( sizeof( HTTP_METHOD_PUT ) - 1 )
+#define IOT_CORE_ALPN_PROTOCOL_NAME_LENGTH    ( sizeof( IOT_CORE_ALPN_PROTOCOL_NAME ) - 1 )
 
 /**
  * @brief The length of the HTTP POST method.
  */
-#define HTTP_METHOD_POST_LENGTH       ( sizeof( HTTP_METHOD_POST ) - 1 )
-
-/**
- * @brief The length of the HTTP GET path.
- */
-#define GET_PATH_LENGTH               ( sizeof( GET_PATH ) - 1 )
-
-/**
- * @brief The length of the HTTP HEAD path.
- */
-#define HEAD_PATH_LENGTH              ( sizeof( HEAD_PATH ) - 1 )
-
-/**
- * @brief The length of the HTTP PUT path.
- */
-#define PUT_PATH_LENGTH               ( sizeof( PUT_PATH ) - 1 )
+#define HTTP_METHOD_POST_LENGTH               ( sizeof( HTTP_METHOD_POST ) - 1 )
 
 /**
  * @brief The length of the HTTP POST path.
  */
-#define POST_PATH_LENGTH              ( sizeof( POST_PATH ) - 1 )
+#define POST_PATH_LENGTH                      ( sizeof( POST_PATH ) - 1 )
 
 /**
- * @brief Length of path to server certificate.
+ * @brief Length of path to root CA certificate of AWS IoT Core.
  */
-#define SERVER_CERT_PATH_LENGTH       ( ( uint16_t ) ( sizeof( SERVER_CERT_PATH ) - 1 ) )
+#define ROOT_CA_PATH_LENGTH                   ( sizeof( ROOT_CA_PATH ) - 1 )
+
+/**
+ * @brief Length of path to client's certificate.
+ */
+#define CLIENT_CERT_PATH_LENGTH               ( sizeof( CLIENT_CERT_PATH ) - 1 )
+
+/**
+ * @brief Length of path to client's key.
+ */
+#define CLIENT_PRIVATE_KEY_PATH_LENGTH        ( sizeof( CLIENT_PRIVATE_KEY_PATH ) - 1 )
 
 /**
  * @brief Length of the request body.
  */
-#define REQUEST_BODY_LENGTH           ( sizeof( REQUEST_BODY ) - 1 )
+#define REQUEST_BODY_LENGTH                   ( sizeof( REQUEST_BODY ) - 1 )
 
 /**
  * @brief Length of an IPv6 address when converted to hex digits.
  */
-#define IPV6_ADDRESS_STRING_LENGTH    ( 40 )
+#define IPV6_ADDRESS_STRING_LENGTH            ( 40 )
 
 /**
  * @brief A buffer used in the demo for storing HTTP request headers and
@@ -164,6 +134,7 @@
  * decide to use separate buffers for storing the HTTP request and response.
  */
 static uint8_t userBuffer[ USER_BUFFER_LENGTH ];
+
 
 /**
  * @brief Definition of the HTTP network context.
@@ -177,6 +148,28 @@ struct NetworkContext
 };
 
 /*-----------------------------------------------------------*/
+
+/**
+ * @brief Performs a DNS lookup on the given host name, then establishes a TCP
+ * connection to the server.
+ *
+ * @param[in] pNetworkContext The network context.
+ *
+ * @return EXIT_FAILURE on failure; EXIT_SUCCESS on success.
+ */
+static int connectToServer( NetworkContext_t pNetworkContext );
+
+/**
+ * @brief Connect to server with reconnection retries.
+ * If connection fails, retry is attempted after a timeout.
+ * Timeout value will exponentially increase till the maximum
+ * attempts are reached.
+ *
+ * @param[in] pNetworkContext The network context.
+ *
+ * @return EXIT_FAILURE on failure; EXIT_SUCCESS on successful connection.
+ */
+static int connectToServerWithBackoffRetries( NetworkContext_t pNetworkContext );
 
 /**
  * @brief Send an HTTP request based on a specified method and path, then
@@ -197,6 +190,94 @@ static int sendHttpRequest( const TransportInterface_t * pTransportInterface,
                             size_t pathLen );
 
 /*-----------------------------------------------------------*/
+
+/**
+ * @brief Performs a DNS lookup on the given host name, then establishes a TCP
+ * connection to the server.
+ *
+ * @param[in] pServer Host name of server.
+ * @param[in] port Server port.
+ * @param[out] pTcpSocket The output parameter to return the created socket descriptor.
+ *
+ * @return EXIT_FAILURE on failure; EXIT_SUCCESS on success.
+ */
+static int connectToServer( NetworkContext_t pNetworkContext )
+{
+    int returnStatus = EXIT_SUCCESS;
+    TCPStatus_t tcpStatus = TCP_SUCCESS;
+    OpensslStatus_t opensslStatus = OPENSSL_SUCCESS;
+    OpensslCredentials_t opensslCredentials;
+
+    ( void ) memset( &opensslCredentials, 0, sizeof( opensslCredentials ) );
+
+    opensslCredentials.pRootCaPath = ROOT_CA_PATH;
+    opensslCredentials.rootCaPathLen = ROOT_CA_PATH_LENGTH;
+    opensslCredentials.pClientCertPath = CLIENT_CERT_PATH;
+    opensslCredentials.clientCertPathLen = CLIENT_CERT_PATH_LENGTH;
+    opensslCredentials.pPrivateKeyPath = CLIENT_PRIVATE_KEY_PATH;
+    opensslCredentials.privateKeyPathLen = CLIENT_PRIVATE_KEY_PATH_LENGTH;
+    opensslCredentials.pAlpnProtos = IOT_CORE_ALPN_PROTOCOL_NAME;
+    opensslCredentials.alpnProtosLen = IOT_CORE_ALPN_PROTOCOL_NAME_LENGTH;
+
+    /* Establish TCP connection. */
+    tcpStatus = TCP_Connect( IOT_CORE_ENDPOINT, IOT_CORE_ENDPOINT_LENGTH,
+                             IOT_CORE_PORT, &pNetworkContext->tcpSocket,
+                             TRANSPORT_SEND_RECV_TIMEOUT_MS,
+                             TRANSPORT_SEND_RECV_TIMEOUT_MS );
+
+    /* Establish TLS connection on top of TCP connection. */
+    if( tcpStatus != TCP_SUCCESS )
+    {
+        returnStatus = EXIT_FAILURE;
+    }
+    else
+    {
+        LogInfo( ( "Performing TLS handshake on top of the TCP connection." ) );
+        opensslStatus = Openssl_Connect( pNetworkContext,
+                                         &opensslCredentials );
+    }
+
+    if( opensslStatus != OPENSSL_SUCCESS )
+    {
+        returnStatus = EXIT_FAILURE;
+    }
+
+    return returnStatus;
+}
+
+/*-----------------------------------------------------------*/
+
+static int connectToServerWithBackoffRetries( NetworkContext_t pNetworkContext )
+{
+    int status = EXIT_SUCCESS;
+    bool backoffSuccess = true;
+    TransportReconnectParams_t reconnectParams;
+
+    /* Initialize reconnect attempts and interval */
+    reconnectBackoffReset( &reconnectParams );
+
+    /* Attempt to connect to server. If connection fails, retry after
+     * a timeout. Timeout value will exponentially increase till maximum
+     * attemps are reached. */
+    do
+    {
+        status = connectToServer( pNetworkContext );
+
+        if( status == EXIT_FAILURE )
+        {
+            LogWarn( ( "Connection to server failed, sleeping %d seconds before the next attempt.",
+                       ( reconnectParams.reconnectTimeoutSec > MAX_RECONNECT_TIMEOUT ) ? MAX_RECONNECT_TIMEOUT : reconnectParams.reconnectTimeoutSec ) );
+            backoffSuccess = reconnectBackoffAndSleep( &reconnectParams );
+        }
+
+        if( backoffSuccess == 0U )
+        {
+            LogError( ( "Connection to server failed, all attempts exhausted." ) );
+        }
+    } while( ( status == EXIT_FAILURE ) && ( backoffSuccess == 1U ) );
+
+    return status;
+}
 
 static int sendHttpRequest( const TransportInterface_t * pTransportInterface,
                             const char * pMethod,
@@ -227,8 +308,8 @@ static int sendHttpRequest( const TransportInterface_t * pTransportInterface,
     ( void ) memset( &requestHeaders, 0, sizeof( requestHeaders ) );
 
     /* Initialize the request object. */
-    requestInfo.pHost = SERVER_HOST;
-    requestInfo.hostLen = SERVER_HOST_LENGTH;
+    requestInfo.pHost = IOT_CORE_ENDPOINT;
+    requestInfo.hostLen = IOT_CORE_ENDPOINT_LENGTH;
     requestInfo.method = pMethod;
     requestInfo.methodLen = methodLen;
     requestInfo.pPath = pPath;
@@ -254,13 +335,14 @@ static int sendHttpRequest( const TransportInterface_t * pTransportInterface,
 
         LogInfo( ( "Sending HTTP %.*s request to %.*s%.*s...",
                    ( int32_t ) methodLen, pMethod,
-                   ( int32_t ) SERVER_HOST_LENGTH, SERVER_HOST,
+                   ( int32_t ) IOT_CORE_ENDPOINT_LENGTH, IOT_CORE_ENDPOINT,
                    ( int32_t ) pathLen, pPath ) );
         LogDebug( ( "Request Headers:\n%.*s\n"
                     "Request Body:\n%.*s\n",
                     ( int32_t ) requestHeaders.headersLen,
                     ( char * ) requestHeaders.pBuffer,
                     ( int32_t ) REQUEST_BODY_LENGTH, REQUEST_BODY ) );
+
         /* Send the request and receive the response. */
         httpStatus = HTTPClient_Send( pTransportInterface,
                                       &requestHeaders,
@@ -281,7 +363,7 @@ static int sendHttpRequest( const TransportInterface_t * pTransportInterface,
                    "Response Headers:\n%.*s\n"
                    "Response Status:\n%u\n"
                    "Response Body:\n%.*s\n",
-                   ( int32_t ) SERVER_HOST_LENGTH, SERVER_HOST,
+                   ( int32_t ) IOT_CORE_ENDPOINT_LENGTH, IOT_CORE_ENDPOINT,
                    ( int32_t ) pathLen, pPath,
                    ( int32_t ) response.headersLen, response.pHeaders,
                    response.statusCode,
@@ -291,7 +373,7 @@ static int sendHttpRequest( const TransportInterface_t * pTransportInterface,
     {
         LogError( ( "Failed to send HTTP %.*s request to %.*s%.*s: Error=%s.",
                     ( int32_t ) methodLen, pMethod,
-                    ( int32_t ) SERVER_HOST_LENGTH, SERVER_HOST,
+                    ( int32_t ) IOT_CORE_ENDPOINT_LENGTH, IOT_CORE_ENDPOINT,
                     ( int32_t ) pathLen, pPath,
                     HTTPClient_strerror( httpStatus ) ) );
     }
@@ -309,12 +391,12 @@ static int sendHttpRequest( const TransportInterface_t * pTransportInterface,
 /**
  * @brief Entry point of demo.
  *
- * This example resolves a domain, establishes a TCP connection, validates the
- * server's certificate using the root CA certificate defined in the config header,
- * then finally performs a TLS handshake with the HTTP server so that all communication
- * is encrypted. After which, HTTP Client library API is used to send a GET, HEAD,
- * PUT, and POST request in that order. For each request, the HTTP response from the
- * server (or an error code) is logged.
+ * This example resolves the AWS IoT Core endpoint, establishes a TCP connection,
+ * performs a mutually authenticated TLS handshake occurs such that all further
+ * communication is encrypted. After which, HTTP Client Library API is used to
+ * make a POST request to AWS IoT Core in order to publish a message to a topic
+ * named topic with QoS=1 so that all clients subscribed to the topic receive
+ * the message at least once. Any possible errors are also logged.
  *
  * @note This example is single-threaded and uses statically allocated memory.
  *
@@ -328,74 +410,25 @@ int main( int argc,
     TransportInterface_t transportInterface;
     /* Structure based on the definition of the HTTP network context. */
     struct NetworkContext networkContext;
-    /* Credentials necessary to establish the TLS connection. */
-    OpensslCredentials_t opensslCredentials;
 
     ( void ) argc;
     ( void ) argv;
 
-    ( void ) memset( &opensslCredentials, 0, sizeof( opensslCredentials ) );
-    opensslCredentials.pRootCaPath = SERVER_CERT_PATH;
-    opensslCredentials.rootCaPathLen = SERVER_CERT_PATH_LENGTH;
-
     /**************************** Connect. ******************************/
 
-    /* Establish TCP connection. */
-    returnStatus = TCP_Connect( SERVER_HOST, SERVER_HOST_LENGTH,
-                                SERVER_PORT, &networkContext.tcpSocket,
-                                TRANSPORT_SEND_RECV_TIMEOUT_MS,
-                                TRANSPORT_SEND_RECV_TIMEOUT_MS );
-
-    /* Establish TLS connection on top of TCP connection. */
-    if( returnStatus == TCP_SUCCESS )
-    {
-        LogInfo( ( "Performing TLS handshake on top of the TCP connection." ) );
-        returnStatus = Openssl_Connect( &networkContext,
-                                        &opensslCredentials );
-    }
-
-    /* Define the transport interface. */
+    /* Define the transport interface, then connect to server. */
     if( returnStatus == EXIT_SUCCESS )
     {
         ( void ) memset( &transportInterface, 0, sizeof( transportInterface ) );
         transportInterface.recv = Openssl_Recv;
         transportInterface.send = Openssl_Send;
         transportInterface.pNetworkContext = &networkContext;
+
+        returnStatus = connectToServerWithBackoffRetries( &networkContext );
     }
 
     /*********************** Send HTTPS request. ************************/
 
-    /* Send GET Request. */
-    if( returnStatus == EXIT_SUCCESS )
-    {
-        returnStatus = sendHttpRequest( &transportInterface,
-                                        HTTP_METHOD_GET,
-                                        HTTP_METHOD_GET_LENGTH,
-                                        GET_PATH,
-                                        GET_PATH_LENGTH );
-    }
-
-    /* Send HEAD Request. */
-    if( returnStatus == EXIT_SUCCESS )
-    {
-        returnStatus = sendHttpRequest( &transportInterface,
-                                        HTTP_METHOD_HEAD,
-                                        HTTP_METHOD_HEAD_LENGTH,
-                                        HEAD_PATH,
-                                        HEAD_PATH_LENGTH );
-    }
-
-    /* Send PUT Request. */
-    if( returnStatus == EXIT_SUCCESS )
-    {
-        returnStatus = sendHttpRequest( &transportInterface,
-                                        HTTP_METHOD_PUT,
-                                        HTTP_METHOD_PUT_LENGTH,
-                                        PUT_PATH,
-                                        PUT_PATH_LENGTH );
-    }
-
-    /* Send POST Request. */
     if( returnStatus == EXIT_SUCCESS )
     {
         returnStatus = sendHttpRequest( &transportInterface,
@@ -407,9 +440,7 @@ int main( int argc,
 
     /************************** Disconnect. *****************************/
 
-    /* Close TLS session if established. */
     Openssl_Disconnect( &networkContext );
-
     TCP_Disconnect( networkContext.tcpSocket );
 
     return returnStatus;
