@@ -103,12 +103,12 @@ static void logTransportError( void )
     }
 }
 
-SocketStatus_t Plaintext_Connect( NetworkContext_t pNetworkContext,
+SocketStatus_t Plaintext_Connect( NetworkContext_t networkContext,
                                   const ServerInfo_t * pServerInfo,
                                   uint32_t sendTimeoutMs,
                                   uint32_t recvTimeoutMs )
 {
-    return Sockets_Connect( &pNetworkContext->socketDescriptor,
+    return Sockets_Connect( &networkContext,
                             pServerInfo,
                             sendTimeoutMs,
                             recvTimeoutMs );
@@ -116,7 +116,7 @@ SocketStatus_t Plaintext_Connect( NetworkContext_t pNetworkContext,
 
 SocketStatus_t Plaintext_Disconnect( const NetworkContext_t pNetworkContext )
 {
-    return Sockets_Disconnect( pNetworkContext->socketDescriptor );
+    return Sockets_Disconnect( networkContext );
 }
 
 int32_t Plaintext_Recv( NetworkContext_t pNetworkContext,
@@ -125,7 +125,7 @@ int32_t Plaintext_Recv( NetworkContext_t pNetworkContext,
 {
     int32_t bytesReceived = 0;
 
-    bytesReceived = recv( pNetworkContext->socketDescriptor, pBuffer, bytesToRecv, 0 );
+    bytesReceived = recv( networkContext, pBuffer, bytesToRecv, 0 );
 
     if( bytesReceived == 0 )
     {
@@ -157,7 +157,7 @@ int32_t Plaintext_Send( NetworkContext_t pNetworkContext,
 {
     int32_t bytesSent = 0;
 
-    bytesSent = send( pNetworkContext->socketDescriptor, pBuffer, bytesToSend, 0 );
+    bytesSent = send( networkContext, pBuffer, bytesToSend, 0 );
 
     if( bytesSent < 0 )
     {

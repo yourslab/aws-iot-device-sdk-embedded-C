@@ -18,6 +18,7 @@ target_link_libraries(
     ${DEMO_NAME}
     PRIVATE
         http
+        openssl_posix
         OpenSSL::Crypto
         OpenSSL::SSL
 	# SSL uses Threads and on some platforms require explicit linking.

@@ -48,20 +48,9 @@
 /************ End of logging configuration ****************/
 
 /* Transport includes. */
-#include "transport_interface.h"
 #include "sockets_posix.h"
 
-/**
- * @brief Definition of the network context for OpenSSL.
- *
- * @note For this transport implementation, the socket descriptor and
- * SSL context is used.
- */
-struct NetworkContext
-{
-    int socketDescriptor;
-    SSL * pSslContext;
-};
+typedef SSL * NetworkContext_t;
 
 /**
  * @brief OpenSSL Connect / Disconnect return status.

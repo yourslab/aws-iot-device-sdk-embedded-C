@@ -26,14 +26,6 @@
 #include <stddef.h>
 
 /**
- * @brief The NetworkContext is an incomplete type. The application must
- * define NetworkContext to the type of their network context. This context
- * is passed into the network interface functions.
- */
-struct NetworkContext;
-typedef struct NetworkContext * NetworkContext_t;
-
-/**
  * @brief Transport interface for receiving data on the network.
  *
  * @param[in] pNetworkContext Application-defined context.

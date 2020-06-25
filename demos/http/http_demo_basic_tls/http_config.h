@@ -48,4 +48,8 @@
 
 /************ End of logging configuration ****************/
 
+#include <openssl/ssl.h>
+
+typedef SSL * NetworkContext_t;
+
 #endif /* ifndef HTTP_CONFIG_H_ */

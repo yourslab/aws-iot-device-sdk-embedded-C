@@ -48,18 +48,13 @@
 /************ End of logging configuration ****************/
 
 /* Transport includes. */
-#include "transport_interface.h"
 #include "sockets_posix.h"
 
-/**
- * @brief Definition of the network context.
- */
-struct NetworkContext
-{
-    int socketDescriptor;
-};
+typedef int NetworkContext_t;
 
 /**
+ * =======
+ * >>>>>>> Stashed changes
  * @brief Establish TCP connection to server.
  *
  * @param[in] pNetworkContext The network context.

@@ -47,9 +47,6 @@
 
 /************ End of logging configuration ****************/
 
-/* Transport interface include. */
-#include "transport_interface.h"
-
 /**
  * @brief TCP Connect / Disconnect return status.
  */
