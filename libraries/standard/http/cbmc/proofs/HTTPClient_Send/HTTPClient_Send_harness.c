@@ -40,8 +40,8 @@ void harness()
     uint32_t sendFlags;
 
     /* Initialize transport interface. */
-    transportInterface.send = TransportInterfaceSendStub;
-    transportInterface.recv = TransportInterfaceReceiveStub;
+    transportInterface.send = nondet_bool() ? NULL : TransportInterfaceSendStub;
+    transportInterface.recv = nondet_bool() ? NULL : TransportInterfaceReceiveStub;
 
     /* Initialize and make assumptions for request headers. */
     pRequestHeaders = allocateHttpRequestHeaders( pRequestHeaders );
@@ -55,31 +55,7 @@ void harness()
     pResponse = allocateHttpResponse( pResponse );
     __CPROVER_assume( isValidHttpResponse( pResponse ) );
 
-    HTTPClient_Send( &transportInterface,
-                     pRequestHeaders,
-                     pRequestBodyBuf,
-                     reqBodyBufLen,
-                     pResponse,
-                     sendFlags );
-
-    /* Test NULL transportInterface along with NULL members for coverage. */
-    HTTPClient_Send( NULL,
-                     pRequestHeaders,
-                     pRequestBodyBuf,
-                     reqBodyBufLen,
-                     pResponse,
-                     sendFlags );
-
-    transportInterface.recv = NULL;
-    HTTPClient_Send( &transportInterface,
-                     pRequestHeaders,
-                     pRequestBodyBuf,
-                     reqBodyBufLen,
-                     pResponse,
-                     sendFlags );
-
-    transportInterface.send = NULL;
-    HTTPClient_Send( &transportInterface,
+    HTTPClient_Send( nondet_bool() ? NULL : &transportInterface,
                      pRequestHeaders,
                      pRequestBodyBuf,
                      reqBodyBufLen,
