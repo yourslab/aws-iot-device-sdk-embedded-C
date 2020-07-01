@@ -41,7 +41,7 @@ if( ${BUILD_TESTS} )
 endif()
             
 # Add all CMakeLists.txts in the standard folder.
-file(GLOB standard_modules "${MODULES_DIR}/standard/*")
+file(GLOB standard_modules "${MODULES_DIR}/standard/http")
 foreach(module IN LISTS standard_modules )
     if(IS_DIRECTORY "${module}" AND EXISTS "${module}/CMakeLists.txt")
         add_subdirectory(${module})
