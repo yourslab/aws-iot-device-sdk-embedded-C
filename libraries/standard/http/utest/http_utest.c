@@ -825,6 +825,14 @@ void test_Http_AddRangeHeader_Invalid_Params( void )
                                          5 /* rageEnd */ );
     TEST_ASSERT_EQUAL( HTTP_INVALID_PARAMETER, retCode );
 
+    /* rangeStart == INT32_MIN. */
+    tearDown();
+    testHeaders.pBuffer = &testBuffer[ 0 ];
+    retCode = HTTPClient_AddRangeHeader( &testHeaders,
+                                         INT32_MIN /* rangeStart */,
+                                         5 /* rageEnd */ );
+    TEST_ASSERT_EQUAL( HTTP_INVALID_PARAMETER, retCode );
+
     /* rangeStart is negative but rangeStart is non-End of File. */
     tearDown();
     testHeaders.pBuffer = &testBuffer[ 0 ];
