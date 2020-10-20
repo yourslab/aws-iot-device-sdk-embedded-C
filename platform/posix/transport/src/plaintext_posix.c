@@ -34,8 +34,8 @@
 #ifdef MULTIPLE_TRANSPORTS
     struct NetworkContext
     {
-        PlaintextContext_t * pContext;
-    }
+        PlaintextParams_t * pContext;
+    };
 #endif
 
 /*-----------------------------------------------------------*/
@@ -66,9 +66,9 @@ SocketStatus_t Plaintext_Connect( NetworkContext_t * pNetworkContext,
     SocketStatus_t returnStatus;
 
     #ifdef MULTIPLE_TRANSPORTS
-        PlaintextContext_t * pPlaintextContext = pNetworkContext->pContext;
+        PlaintextParams_t * pPlaintextParams = pNetworkContext->pContext;
     #else
-        NetworkContext_t * pPlaintextContext = pNetworkContext;
+        NetworkContext_t * pPlaintextParams = pNetworkContext;
     #endif
 
     /* Validate parameters. */
@@ -77,14 +77,14 @@ SocketStatus_t Plaintext_Connect( NetworkContext_t * pNetworkContext,
         LogError( ( "Parameter check failed: pNetworkContext is NULL." ) );
         returnStatus = SOCKETS_INVALID_PARAMETER;
     }
-    else if( pPlaintextContext == NULL )
+    else if( pPlaintextParams == NULL )
     {
         LogError( ( "Parameter check failed: pNetworkContext->pContext is NULL." ) );
         returnStatus = SOCKETS_INVALID_PARAMETER;
     }
     else
     {
-        returnStatus = Sockets_Connect( &pPlaintextContext->socketDescriptor,
+        returnStatus = Sockets_Connect( &pPlaintextParams->socketDescriptor,
                                         pServerInfo,
                                         sendTimeoutMs,
                                         recvTimeoutMs );
@@ -99,9 +99,9 @@ SocketStatus_t Plaintext_Disconnect( const NetworkContext_t * pNetworkContext )
     SocketStatus_t returnStatus;
 
     #ifdef MULTIPLE_TRANSPORTS
-        PlaintextContext_t * pPlaintextContext = pNetworkContext->pContext;
+        PlaintextParams_t * pPlaintextParams = pNetworkContext->pContext;
     #else
-        NetworkContext_t * pPlaintextContext = pNetworkContext;
+        NetworkContext_t * pPlaintextParams = pNetworkContext;
     #endif
 
     /* Validate parameters. */
@@ -110,14 +110,14 @@ SocketStatus_t Plaintext_Disconnect( const NetworkContext_t * pNetworkContext )
         LogError( ( "Parameter check failed: pNetworkContext is NULL." ) );
         returnStatus = SOCKETS_INVALID_PARAMETER;
     }
-    else if( pPlaintextContext == NULL )
+    else if( pPlaintextParams == NULL )
     {
         LogError( ( "Parameter check failed: pNetworkContext->pContext is NULL." ) );
         returnStatus = SOCKETS_INVALID_PARAMETER;
     }
     else
     {
-        returnStatus = Sockets_Disconnect( pNetworkContext->socketDescriptor );
+        returnStatus = Sockets_Disconnect( pPlaintextParams->socketDescriptor );
     }
 
     return returnStatus;
@@ -135,18 +135,18 @@ int32_t Plaintext_Recv( const NetworkContext_t * pNetworkContext,
     fd_set readfds;
 
     #ifdef MULTIPLE_TRANSPORTS
-        PlaintextContext_t * pPlaintextContext = pNetworkContext->pContext;
+        PlaintextParams_t * pPlaintextParams = pNetworkContext->pContext;
     #else
-        NetworkContext_t * pPlaintextContext = pNetworkContext;
+        NetworkContext_t * pPlaintextParams = pNetworkContext;
     #endif
 
-    assert( pPlaintextContext != NULL );
+    assert( pPlaintextParams != NULL );
     assert( pBuffer != NULL );
     assert( bytesToRecv > 0 );
 
     /* Get receive timeout from the socket to use as the timeout for #select. */
     recvTimeoutLen = ( socklen_t ) sizeof( recvTimeout );
-    getTimeoutStatus = getsockopt( pNetworkContext->socketDescriptor,
+    getTimeoutStatus = getsockopt( pPlaintextParams->socketDescriptor,
                                    SOL_SOCKET,
                                    SO_RCVTIMEO,
                                    &recvTimeout,
@@ -189,10 +189,10 @@ int32_t Plaintext_Recv( const NetworkContext_t * pNetworkContext,
     /* coverity[misra_c_2012_rule_10_1_violation] */
     /* coverity[misra_c_2012_rule_13_4_violation] */
     /* coverity[misra_c_2012_rule_10_8_violation] */
-    FD_SET( pNetworkContext->socketDescriptor, &readfds );
+    FD_SET( pPlaintextParams->socketDescriptor, &readfds );
 
     /* Check if there is data to read from the socket. */
-    selectStatus = select( pNetworkContext->socketDescriptor + 1,
+    selectStatus = select( pPlaintextParams->socketDescriptor + 1,
                            &readfds,
                            NULL,
                            NULL,
@@ -201,7 +201,7 @@ int32_t Plaintext_Recv( const NetworkContext_t * pNetworkContext,
     if( selectStatus > 0 )
     {
         /* The socket is available for receiving data. */
-        bytesReceived = ( int32_t ) recv( pNetworkContext->socketDescriptor,
+        bytesReceived = ( int32_t ) recv( pPlaintextParams->socketDescriptor,
                                           pBuffer,
                                           bytesToRecv,
                                           0 );
@@ -245,18 +245,18 @@ int32_t Plaintext_Send( const NetworkContext_t * pNetworkContext,
     fd_set writefds;
 
     #ifdef MULTIPLE_TRANSPORTS
-        PlaintextContext_t * pPlaintextContext = pNetworkContext->pContext;
+        PlaintextParams_t * pPlaintextParams = pNetworkContext->pContext;
     #else
-        NetworkContext_t * pPlaintextContext = pNetworkContext;
+        NetworkContext_t * pPlaintextParams = pNetworkContext;
     #endif
 
-    assert( pPlaintextContext != NULL );
+    assert( pPlaintextParams != NULL );
     assert( pBuffer != NULL );
     assert( bytesToSend > 0 );
 
     /* Get send timeout from the socket to use as the timeout for #select. */
     sendTimeoutLen = ( socklen_t ) sizeof( sendTimeout );
-    getTimeoutStatus = getsockopt( pNetworkContext->socketDescriptor,
+    getTimeoutStatus = getsockopt( pPlaintextParams->socketDescriptor,
                                    SOL_SOCKET,
                                    SO_SNDTIMEO,
                                    &sendTimeout,
@@ -298,9 +298,9 @@ int32_t Plaintext_Send( const NetworkContext_t * pNetworkContext,
     /* coverity[misra_c_2012_rule_10_1_violation] */
     /* coverity[misra_c_2012_rule_13_4_violation] */
     /* coverity[misra_c_2012_rule_10_8_violation] */
-    FD_SET( pNetworkContext->socketDescriptor, &writefds );
+    FD_SET( pPlaintextParams->socketDescriptor, &writefds );
     /* Check if data can be written to the socket. */
-    selectStatus = select( pNetworkContext->socketDescriptor + 1,
+    selectStatus = select( pPlaintextParams->socketDescriptor + 1,
                            NULL,
                            &writefds,
                            NULL,
@@ -309,7 +309,7 @@ int32_t Plaintext_Send( const NetworkContext_t * pNetworkContext,
     if( selectStatus > 0 )
     {
         /* The socket is available for sending data. */
-        bytesSent = ( int32_t ) send( pNetworkContext->socketDescriptor,
+        bytesSent = ( int32_t ) send( pPlaintextParams->socketDescriptor,
                                       pBuffer,
                                       bytesToSend,
                                       0 );

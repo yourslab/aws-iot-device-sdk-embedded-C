@@ -59,10 +59,10 @@
 /**
  * @brief Parameters for the network context.
  */
-typedef struct PlaintextContext
+typedef struct PlaintextParams
 {
     PLAINTEXT_TRANSPORT_PARAMS;
-} PlaintextContext_t;
+} PlaintextParams_t;
 
 #ifndef MULTIPLE_TRANSPORTS
     struct NetworkContext

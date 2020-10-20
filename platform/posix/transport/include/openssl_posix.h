@@ -69,10 +69,10 @@
  * @note For this transport implementation, the socket descriptor and
  * SSL context is used.
  */
-typedef struct OpensslContext
+typedef struct OpensslParams
 {
     OPENSSL_TRANSPORT_PARAMS;
-} OpensslContext_t;
+} OpensslParams_t;
 
 #ifndef MULTIPLE_TRANSPORTS
     struct NetworkContext
