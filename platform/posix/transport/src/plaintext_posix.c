@@ -31,6 +31,13 @@
 
 #include "plaintext_posix.h"
 
+#ifdef MULTIPLE_TRANSPORTS
+    struct NetworkContext
+    {
+        PlaintextContext_t * pContext;
+    }
+#endif
+
 /*-----------------------------------------------------------*/
 
 /**
@@ -56,17 +63,66 @@ SocketStatus_t Plaintext_Connect( NetworkContext_t * pNetworkContext,
                                   uint32_t sendTimeoutMs,
                                   uint32_t recvTimeoutMs )
 {
-    return Sockets_Connect( &pNetworkContext->socketDescriptor,
-                            pServerInfo,
-                            sendTimeoutMs,
-                            recvTimeoutMs );
+    SocketStatus_t returnStatus;
+
+    #ifdef MULTIPLE_TRANSPORTS
+        PlaintextContext_t * pPlaintextContext = pNetworkContext->pContext;
+    #else
+        NetworkContext_t * pPlaintextContext = pNetworkContext;
+    #endif
+
+    /* Validate parameters. */
+    if( pNetworkContext == NULL )
+    {
+        LogError( ( "Parameter check failed: pNetworkContext is NULL." ) );
+        returnStatus = SOCKETS_INVALID_PARAMETER;
+    }
+    else if( pPlaintextContext == NULL )
+    {
+        LogError( ( "Parameter check failed: pNetworkContext->pContext is NULL." ) );
+        returnStatus = SOCKETS_INVALID_PARAMETER;
+    }
+    else
+    {
+        returnStatus = Sockets_Connect( &pPlaintextContext->socketDescriptor,
+                                        pServerInfo,
+                                        sendTimeoutMs,
+                                        recvTimeoutMs );
+    }
+
+    return returnStatus;
 }
 /*-----------------------------------------------------------*/
 
 SocketStatus_t Plaintext_Disconnect( const NetworkContext_t * pNetworkContext )
 {
-    return Sockets_Disconnect( pNetworkContext->socketDescriptor );
+    SocketStatus_t returnStatus;
+
+    #ifdef MULTIPLE_TRANSPORTS
+        PlaintextContext_t * pPlaintextContext = pNetworkContext->pContext;
+    #else
+        NetworkContext_t * pPlaintextContext = pNetworkContext;
+    #endif
+
+    /* Validate parameters. */
+    if( pNetworkContext == NULL )
+    {
+        LogError( ( "Parameter check failed: pNetworkContext is NULL." ) );
+        returnStatus = SOCKETS_INVALID_PARAMETER;
+    }
+    else if( pPlaintextContext == NULL )
+    {
+        LogError( ( "Parameter check failed: pNetworkContext->pContext is NULL." ) );
+        returnStatus = SOCKETS_INVALID_PARAMETER;
+    }
+    else
+    {
+        returnStatus = Sockets_Disconnect( pNetworkContext->socketDescriptor );
+    }
+
+    return returnStatus;
 }
+
 /*-----------------------------------------------------------*/
 
 int32_t Plaintext_Recv( const NetworkContext_t * pNetworkContext,
@@ -78,7 +134,13 @@ int32_t Plaintext_Recv( const NetworkContext_t * pNetworkContext,
     socklen_t recvTimeoutLen;
     fd_set readfds;
 
-    assert( pNetworkContext != NULL );
+    #ifdef MULTIPLE_TRANSPORTS
+        PlaintextContext_t * pPlaintextContext = pNetworkContext->pContext;
+    #else
+        NetworkContext_t * pPlaintextContext = pNetworkContext;
+    #endif
+
+    assert( pPlaintextContext != NULL );
     assert( pBuffer != NULL );
     assert( bytesToRecv > 0 );
 
@@ -182,7 +244,13 @@ int32_t Plaintext_Send( const NetworkContext_t * pNetworkContext,
     socklen_t sendTimeoutLen;
     fd_set writefds;
 
-    assert( pNetworkContext != NULL );
+    #ifdef MULTIPLE_TRANSPORTS
+        PlaintextContext_t * pPlaintextContext = pNetworkContext->pContext;
+    #else
+        NetworkContext_t * pPlaintextContext = pNetworkContext;
+    #endif
+
+    assert( pPlaintextContext != NULL );
     assert( pBuffer != NULL );
     assert( bytesToSend > 0 );
 

@@ -33,6 +33,13 @@
 #include "openssl_posix.h"
 #include <openssl/err.h>
 
+#ifdef MULTIPLE_TRANSPORTS
+    struct NetworkContext
+    {
+        OpensslContext_t * pContext;
+    }
+#endif
+
 /*-----------------------------------------------------------*/
 
 /**
@@ -481,10 +488,21 @@ OpensslStatus_t Openssl_Connect( NetworkContext_t * pNetworkContext,
     SSL_CTX * pSslContext = NULL;
     int32_t verifyPeerCertStatus = X509_V_OK;
 
+    #ifdef MULTIPLE_TRANSPORTS
+        OpensslContext_t * pOpensslContext = pNetworkContext->pContext;
+    #else
+        NetworkContext_t * pOpensslContext = pNetworkContext;
+    #endif
+
     /* Validate parameters. */
     if( pNetworkContext == NULL )
     {
         LogError( ( "Parameter check failed: pNetworkContext is NULL." ) );
+        returnStatus = OPENSSL_INVALID_PARAMETER;
+    }
+    else if( pOpensslContext == NULL )
+    {
+        LogError( ( "Parameter check failed: pNetworkContext->pContext is NULL." ) );
         returnStatus = OPENSSL_INVALID_PARAMETER;
     }
     else if( pOpensslCredentials == NULL )
@@ -500,7 +518,7 @@ OpensslStatus_t Openssl_Connect( NetworkContext_t * pNetworkContext,
     /* Establish the TCP connection. */
     if( returnStatus == OPENSSL_SUCCESS )
     {
-        socketStatus = Sockets_Connect( &pNetworkContext->socketDescriptor,
+        socketStatus = Sockets_Connect( &pOpensslContext->socketDescriptor,
                                         pServerInfo,
                                         sendTimeoutMs,
                                         recvTimeoutMs );
@@ -546,9 +564,9 @@ OpensslStatus_t Openssl_Connect( NetworkContext_t * pNetworkContext,
     /* Create a new SSL session. */
     if( returnStatus == OPENSSL_SUCCESS )
     {
-        pNetworkContext->pSsl = SSL_new( pSslContext );
+        pOpensslContext->pSsl = SSL_new( pSslContext );
 
-        if( pNetworkContext->pSsl == NULL )
+        if( pOpensslContext->pSsl == NULL )
         {
             LogError( ( "SSL_new failed to create a new SSL context." ) );
             returnStatus = OPENSSL_API_ERROR;
@@ -563,9 +581,9 @@ OpensslStatus_t Openssl_Connect( NetworkContext_t * pNetworkContext,
     if( returnStatus == OPENSSL_SUCCESS )
     {
         /* Enable SSL peer verification. */
-        SSL_set_verify( pNetworkContext->pSsl, SSL_VERIFY_PEER, NULL );
+        SSL_set_verify( pOpensslContext->pSsl, SSL_VERIFY_PEER, NULL );
 
-        sslStatus = SSL_set_fd( pNetworkContext->pSsl, pNetworkContext->socketDescriptor );
+        sslStatus = SSL_set_fd( pOpensslContext->pSsl, pOpensslContext->socketDescriptor );
 
         if( sslStatus != 1 )
         {
@@ -577,9 +595,9 @@ OpensslStatus_t Openssl_Connect( NetworkContext_t * pNetworkContext,
     /* Perform the TLS handshake. */
     if( returnStatus == OPENSSL_SUCCESS )
     {
-        setOptionalConfigurations( pNetworkContext->pSsl, pOpensslCredentials );
+        setOptionalConfigurations( pOpensslContext->pSsl, pOpensslCredentials );
 
-        sslStatus = SSL_connect( pNetworkContext->pSsl );
+        sslStatus = SSL_connect( pOpensslContext->pSsl );
 
         if( sslStatus != 1 )
         {
@@ -591,7 +609,7 @@ OpensslStatus_t Openssl_Connect( NetworkContext_t * pNetworkContext,
     /* Verify X509 certificate from peer. */
     if( returnStatus == OPENSSL_SUCCESS )
     {
-        verifyPeerCertStatus = ( int32_t ) SSL_get_verify_result( pNetworkContext->pSsl );
+        verifyPeerCertStatus = ( int32_t ) SSL_get_verify_result( pOpensslContext->pSsl );
 
         if( verifyPeerCertStatus != X509_V_OK )
         {
@@ -610,8 +628,8 @@ OpensslStatus_t Openssl_Connect( NetworkContext_t * pNetworkContext,
     /* Clean up on error. */
     if( ( returnStatus != OPENSSL_SUCCESS ) && ( sslObjectCreated == 1u ) )
     {
-        SSL_free( pNetworkContext->pSsl );
-        pNetworkContext->pSsl = NULL;
+        SSL_free( pOpensslContext->pSsl );
+        pOpensslContext->pSsl = NULL;
     }
 
     /* Log failure or success depending on status. */
@@ -632,6 +650,12 @@ OpensslStatus_t Openssl_Disconnect( const NetworkContext_t * pNetworkContext )
 {
     SocketStatus_t socketStatus = SOCKETS_INVALID_PARAMETER;
 
+    #ifdef MULTIPLE_TRANSPORTS
+        OpensslContext_t * pOpensslContext = pNetworkContext->pContext;
+    #else
+        NetworkContext_t * pOpensslContext = pNetworkContext;
+    #endif
+
     if( pNetworkContext == NULL )
     {
         /* No need to update the status here. The socket status
@@ -640,22 +664,26 @@ OpensslStatus_t Openssl_Disconnect( const NetworkContext_t * pNetworkContext )
          * function. */
         LogError( ( "Parameter check failed: pNetworkContext is NULL." ) );
     }
+    else if( pOpensslContext == NULL )
+    {
+        LogError( ( "Parameter check failed: pNetworkContext->pContext is NULL." ) );
+    }
     else
     {
-        if( pNetworkContext->pSsl != NULL )
+        if( pOpensslContext->pSsl != NULL )
         {
             /* SSL shutdown should be called twice: once to send "close notify" and
              * once more to receive the peer's "close notify". */
-            if( SSL_shutdown( pNetworkContext->pSsl ) == 0 )
+            if( SSL_shutdown( pOpensslContext->pSsl ) == 0 )
             {
-                ( void ) SSL_shutdown( pNetworkContext->pSsl );
+                ( void ) SSL_shutdown( pOpensslContext->pSsl );
             }
 
-            SSL_free( pNetworkContext->pSsl );
+            SSL_free( pOpensslContext->pSsl );
         }
 
         /* Tear down the socket connection, pNetworkContext != NULL here. */
-        socketStatus = Sockets_Disconnect( pNetworkContext->socketDescriptor );
+        socketStatus = Sockets_Disconnect( pOpensslContext->socketDescriptor );
     }
 
     return convertToOpensslStatus( socketStatus );
@@ -669,21 +697,31 @@ int32_t Openssl_Recv( const NetworkContext_t * pNetworkContext,
     int32_t bytesReceived = 0;
     int32_t sslError = 0;
 
+    #ifdef MULTIPLE_TRANSPORTS
+        OpensslContext_t * pOpensslContext = pNetworkContext->pContext;
+    #else
+        NetworkContext_t * pOpensslContext = pNetworkContext;
+    #endif
+
     if( pNetworkContext == NULL )
     {
         LogError( ( "Parameter check failed: pNetworkContext is NULL." ) );
     }
-    else if( pNetworkContext->pSsl != NULL )
+    else if( pOpensslContext == NULL )
+    {
+        LogError( ( "Parameter check failed: pNetworkContext->pContext is NULL." ) );
+    }
+    else if( pOpensslContext->pSsl != NULL )
     {
         /* SSL read of data. */
-        bytesReceived = ( int32_t ) SSL_read( pNetworkContext->pSsl,
+        bytesReceived = ( int32_t ) SSL_read( pOpensslContext->pSsl,
                                               pBuffer,
                                               ( int32_t ) bytesToRecv );
 
         /* Handle error return status if transport read did not succeed. */
         if( bytesReceived <= 0 )
         {
-            sslError = SSL_get_error( pNetworkContext->pSsl, bytesReceived );
+            sslError = SSL_get_error( pOpensslContext->pSsl, bytesReceived );
 
             if( sslError == SSL_ERROR_WANT_READ )
             {
@@ -717,20 +755,30 @@ int32_t Openssl_Send( const NetworkContext_t * pNetworkContext,
     /* Unused parameter when logs are disabled. */
     ( void ) sslError;
 
+    #ifdef MULTIPLE_TRANSPORTS
+        OpensslContext_t * pOpensslContext = pNetworkContext->pContext;
+    #else
+        NetworkContext_t * pOpensslContext = pNetworkContext;
+    #endif
+
     if( pNetworkContext == NULL )
     {
         LogError( ( "Parameter check failed: pNetworkContext is NULL." ) );
     }
-    else if( pNetworkContext->pSsl != NULL )
+    else if( pOpensslContext == NULL )
+    {
+        LogError( ( "Parameter check failed: pNetworkContext->pContext is NULL." ) );
+    }
+    else if( pOpensslContext->pSsl != NULL )
     {
         /* SSL write of data. */
-        bytesSent = ( int32_t ) SSL_write( pNetworkContext->pSsl,
+        bytesSent = ( int32_t ) SSL_write( pOpensslContext->pSsl,
                                            pBuffer,
                                            ( int32_t ) bytesToSend );
 
         if( bytesSent <= 0 )
         {
-            sslError = SSL_get_error( pNetworkContext->pSsl, bytesSent );
+            sslError = SSL_get_error( pOpensslContext->pSsl, bytesSent );
 
             LogError( ( "Failed to send data over network: SSL_write of OpenSSL failed: "
                         "ErrorStatus=%s.", ERR_reason_error_string( sslError ) ) );

@@ -53,13 +53,23 @@
 #include "transport_interface.h"
 #include "sockets_posix.h"
 
-/**
- * @brief Definition of the network context.
- */
-struct NetworkContext
-{
+#define PLAINTEXT_TRANSPORT_PARAMS \
     int32_t socketDescriptor;
-};
+
+/**
+ * @brief Parameters for the network context.
+ */
+typedef struct PlaintextContext
+{
+    PLAINTEXT_TRANSPORT_PARAMS;
+} PlaintextContext_t;
+
+#ifndef MULTIPLE_TRANSPORTS
+    struct NetworkContext
+    {
+        PLAINTEXT_TRANSPORT_PARAMS;
+    };
+#endif
 
 /**
  * @brief Establish TCP connection to server.
