@@ -489,7 +489,7 @@ OpensslStatus_t Openssl_Connect( NetworkContext_t * pNetworkContext,
     int32_t verifyPeerCertStatus = X509_V_OK;
 
     #ifdef MULTIPLE_TRANSPORTS
-        OpensslParams_t * pOpensslParams = pNetworkContext->pContext;
+        OpensslParams_t * pOpensslParams = pNetworkContext->pOpensslParams;
     #else
         NetworkContext_t * pOpensslParams = pNetworkContext;
     #endif
@@ -651,7 +651,7 @@ OpensslStatus_t Openssl_Disconnect( const NetworkContext_t * pNetworkContext )
     SocketStatus_t socketStatus = SOCKETS_INVALID_PARAMETER;
 
     #ifdef MULTIPLE_TRANSPORTS
-        OpensslParams_t * pOpensslParams = pNetworkContext->pContext;
+        OpensslParams_t * pOpensslParams = pNetworkContext->pOpensslParams;
     #else
         NetworkContext_t * pOpensslParams = pNetworkContext;
     #endif
@@ -698,7 +698,7 @@ int32_t Openssl_Recv( const NetworkContext_t * pNetworkContext,
     int32_t sslError = 0;
 
     #ifdef MULTIPLE_TRANSPORTS
-        OpensslParams_t * pOpensslParams = pNetworkContext->pContext;
+        OpensslParams_t * pOpensslParams = pNetworkContext->pOpensslParams;
     #else
         NetworkContext_t * pOpensslParams = pNetworkContext;
     #endif
@@ -756,7 +756,7 @@ int32_t Openssl_Send( const NetworkContext_t * pNetworkContext,
     ( void ) sslError;
 
     #ifdef MULTIPLE_TRANSPORTS
-        OpensslParams_t * pOpensslParams = pNetworkContext->pContext;
+        OpensslParams_t * pOpensslParams = pNetworkContext->pOpensslParams;
     #else
         NetworkContext_t * pOpensslParams = pNetworkContext;
     #endif

@@ -66,7 +66,7 @@ SocketStatus_t Plaintext_Connect( NetworkContext_t * pNetworkContext,
     SocketStatus_t returnStatus;
 
     #ifdef MULTIPLE_TRANSPORTS
-        PlaintextParams_t * pPlaintextParams = pNetworkContext->pContext;
+        PlaintextParams_t * pPlaintextParams = pNetworkContext->pPlaintextParams;
     #else
         NetworkContext_t * pPlaintextParams = pNetworkContext;
     #endif
@@ -99,7 +99,7 @@ SocketStatus_t Plaintext_Disconnect( const NetworkContext_t * pNetworkContext )
     SocketStatus_t returnStatus;
 
     #ifdef MULTIPLE_TRANSPORTS
-        PlaintextParams_t * pPlaintextParams = pNetworkContext->pContext;
+        PlaintextParams_t * pPlaintextParams = pNetworkContext->pPlaintextParams;
     #else
         NetworkContext_t * pPlaintextParams = pNetworkContext;
     #endif
@@ -125,7 +125,7 @@ SocketStatus_t Plaintext_Disconnect( const NetworkContext_t * pNetworkContext )
 
 /*-----------------------------------------------------------*/
 
-int32_t Plaintext_Recv( const NetworkContext_t * pNetworkContext,
+int32_t Plaintext_Recv( NetworkContext_t * pNetworkContext,
                         void * pBuffer,
                         size_t bytesToRecv )
 {
@@ -135,7 +135,7 @@ int32_t Plaintext_Recv( const NetworkContext_t * pNetworkContext,
     fd_set readfds;
 
     #ifdef MULTIPLE_TRANSPORTS
-        PlaintextParams_t * pPlaintextParams = pNetworkContext->pContext;
+        PlaintextParams_t * pPlaintextParams = pNetworkContext->pPlaintextParams;
     #else
         NetworkContext_t * pPlaintextParams = pNetworkContext;
     #endif
@@ -235,7 +235,7 @@ int32_t Plaintext_Recv( const NetworkContext_t * pNetworkContext,
 }
 /*-----------------------------------------------------------*/
 
-int32_t Plaintext_Send( const NetworkContext_t * pNetworkContext,
+int32_t Plaintext_Send( NetworkContext_t * pNetworkContext,
                         const void * pBuffer,
                         size_t bytesToSend )
 {
@@ -245,7 +245,7 @@ int32_t Plaintext_Send( const NetworkContext_t * pNetworkContext,
     fd_set writefds;
 
     #ifdef MULTIPLE_TRANSPORTS
-        PlaintextParams_t * pPlaintextParams = pNetworkContext->pContext;
+        PlaintextParams_t * pPlaintextParams = pNetworkContext->pPlaintextParams;
     #else
         NetworkContext_t * pPlaintextParams = pNetworkContext;
     #endif
