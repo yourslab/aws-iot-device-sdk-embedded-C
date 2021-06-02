@@ -19,6 +19,14 @@ extern "C" {
 
 #include <stdbool.h>
 #include <string.h>
+#include <sys/types.h>
+#include <sys/socket.h>
+#include <unistd.h>
+#include <netdb.h>
+#include <fcntl.h>
+#include <netdb.h>
+#include <errno.h>
+
 #include "aws_iot_config.h"
 
 #include <timer_platform.h>
@@ -49,12 +57,93 @@ extern "C" {
 	#define IOT_SSL_READ_RETRY_TIMEOUT_MS 10
 #endif
 
+/* The amount of time to wait while the connection is in progress. */
+#ifndef IOT_SSL_CONNECT_TIMEOUT_MS
+    #define IOT_SSL_CONNECT_TIMEOUT_MS 5000
+#endif
+
 /* This defines the value of the debug buffer that gets allocated.
  * The value can be altered based on memory constraints
  */
 #ifdef ENABLE_IOT_DEBUG
 #define MBEDTLS_DEBUG_BUFFER_SIZE 2048
 #endif
+
+/*
+ * A non-blocking implementation of mbedtls_net_connect
+ */
+int mbedtls_net_connect_nonblock( mbedtls_net_context *ctx, const char *host, const char *port, int proto )
+{
+    int ret;
+    struct addrinfo hints, *addr_list, *cur;
+
+    /* Do name resolution with both IPv6 and IPv4 */
+    memset( &hints, 0, sizeof( hints ) );
+    hints.ai_family = AF_UNSPEC;
+    hints.ai_socktype = proto == MBEDTLS_NET_PROTO_UDP ? SOCK_DGRAM : SOCK_STREAM;
+    hints.ai_protocol = proto == MBEDTLS_NET_PROTO_UDP ? IPPROTO_UDP : IPPROTO_TCP;
+
+    if ( getaddrinfo( host, port, &hints, &addr_list ) != 0 ) {
+        return ( MBEDTLS_ERR_NET_UNKNOWN_HOST );
+    }
+
+    /* Try the sockaddrs until a connection succeeds */
+    ret = MBEDTLS_ERR_NET_UNKNOWN_HOST;
+    for ( cur = addr_list; cur != NULL; cur = cur->ai_next ) {
+        int fd = socket( cur->ai_family, cur->ai_socktype, cur->ai_protocol );
+        struct timeval tv;
+        fd_set read_fds, write_fds;
+
+		/* Set the socket to non-blocking before connecting. */
+        if ( fd < 0 ||
+			 fcntl( fd, F_SETFL, fcntl( fd, F_GETFL, 0 ) | O_NONBLOCK ) < 0 ) {
+            ret = MBEDTLS_ERR_NET_SOCKET_FAILED;
+            continue;
+        }
+
+        FD_ZERO( &read_fds );
+        FD_SET( fd, &read_fds );
+        FD_ZERO( &write_fds );
+        FD_SET( fd, &write_fds );
+
+        tv.tv_sec  = IOT_SSL_CONNECT_TIMEOUT_MS / 1000;
+        tv.tv_usec = ( IOT_SSL_CONNECT_TIMEOUT_MS % 1000 ) * 1000;
+
+        ret = connect( fd, cur->ai_addr, cur->ai_addrlen );
+        if (ret != 0) {
+            if (errno == EINPROGRESS) {
+                // connecting
+                ret = select( fd + 1, &read_fds, &write_fds, NULL, IOT_SSL_CONNECT_TIMEOUT_MS == 0 ? NULL : &tv );
+
+                if (ret < 0) {
+                    ret = MBEDTLS_ERR_NET_CONNECT_FAILED;
+                } else if (ret == 0) {
+                    ret = MBEDTLS_ERR_SSL_TIMEOUT;
+                } else if (ret == 1 && FD_ISSET(fd, &write_fds)) {
+                    // successfully connected 
+                    ret = 0;
+                }
+            } else {
+                ret = MBEDTLS_ERR_NET_CONNECT_FAILED;
+            }
+        }
+
+        if ( ret == 0 ) {
+            ctx->fd = fd; // connected!
+            ret = 0;
+            break;
+        } else {
+            ESP_LOGE(TAG, "Failed to connect with %d", ret);
+        }
+
+        close( fd );
+        ret = MBEDTLS_ERR_NET_CONNECT_FAILED;
+    }
+
+    freeaddrinfo( addr_list );
+
+    return ( ret );
+}
 
 /*
  * This is a function to do further verification if needed on the cert received
@@ -177,8 +266,14 @@ IoT_Error_t iot_tls_connect(Network *pNetwork, TLSConnectParams *params) {
 	IOT_DEBUG(" ok\n");
 	snprintf(portBuffer, 6, "%d", pNetwork->tlsConnectParams.DestinationPort);
 	IOT_DEBUG("  . Connecting to %s/%s...", pNetwork->tlsConnectParams.pDestinationURL, portBuffer);
-	if((ret = mbedtls_net_connect(&(tlsDataParams->server_fd), pNetwork->tlsConnectParams.pDestinationURL,
-								  portBuffer, MBEDTLS_NET_PROTO_TCP)) != 0) {
+	#ifdef IOT_SSL_SOCKET_NON_BLOCKING
+		ret = mbedtls_net_connect_nonblock(&(tlsDataParams->server_fd), pNetwork->tlsConnectParams.pDestinationURL,
+								  		   portBuffer, MBEDTLS_NET_PROTO_TCP);
+	#else
+		ret = mbedtls_net_connect(&(tlsDataParams->server_fd), pNetwork->tlsConnectParams.pDestinationURL,
+								  portBuffer, MBEDTLS_NET_PROTO_TCP);
+	#endif
+	if(ret != 0) {
 		IOT_ERROR(" failed\n  ! mbedtls_net_connect returned -0x%x\n\n", -ret);
 		switch(ret) {
 			case MBEDTLS_ERR_NET_SOCKET_FAILED:
@@ -191,7 +286,12 @@ IoT_Error_t iot_tls_connect(Network *pNetwork, TLSConnectParams *params) {
 		};
 	}
 
-	ret = mbedtls_net_set_block(&(tlsDataParams->server_fd));
+	/* Set the socket to blocking or non-blocking before the handshake. */
+	#ifdef IOT_SSL_SOCKET_NON_BLOCKING
+		ret = mbedtls_net_set_nonblock(&(tlsDataParams->server_fd));
+	#else
+		ret = mbedtls_net_set_block(&(tlsDataParams->server_fd));
+	#endif
 	if(ret != 0) {
 		IOT_ERROR(" failed\n  ! net_set_(non)block() returned -0x%x\n\n", -ret);
 		return SSL_CONNECTION_ERROR;
